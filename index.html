@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Stock Check — Cabitan NHS</title>
+<!--
+  DEPLOYING TO GITHUB PAGES:
+  1. Rename this file to index.html and upload it to your GitHub repo
+     (this is the staff-facing tool: check stock, sign in, log In/Out).
+  2. Repo Settings -> Pages -> Source: Deploy from a branch -> main -> / (root).
+  3. Your live URL will be https://yourusername.github.io/your-repo-name/
+  4. Open it on a phone, tap "Connection settings," paste your Supabase
+     project URL and anon key, then "Add to Home Screen" for quick access.
+  5. Uses localStorage to remember your connection settings and sign-in
+     session on that device -- works fine on GitHub Pages (unlike Claude's
+     artifact sandbox, which needed a different storage API).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16233D; --paper:#FAF7F0; --paper-raised:#FFFFFF; --slate:#64748B; --hair:#E4DFD3;
+    --green:#2F7A4D; --green-bg:#E8F3EC;
+    --amber:#C77C1D; --amber-bg:#FBEEDC;
+    --rust:#B4402A; --rust-bg:#F8E8E4;
+    --blue:#2E5AAC; --blue-bg:#E7EDF9;
+  }
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
+  html,body{margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,sans-serif; -webkit-tap-highlight-color:transparent;}
+  .app{max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+  header{position:sticky; top:0; z-index:10; background:var(--ink); color:var(--paper); padding:18px 18px 14px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#8FA3C9; margin:0 0 4px;}
+  .title-row{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; margin:0; letter-spacing:-0.01em;}
+  #authControl{font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;}
+  #authControl button{background:none; border:1px solid #2A3B5C; color:var(--paper); border-radius:99px; padding:5px 11px; cursor:pointer; font-family:inherit; font-size:11px;}
+  #authEmail{display:block; color:#8FA3C9; margin-bottom:4px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  .search-row{display:flex; gap:8px;}
+  #search{flex:1; font-family:'Inter',sans-serif; font-size:15px; padding:11px 14px; border-radius:10px; border:1px solid #2A3B5C; background:#1F3050; color:var(--paper); outline:none;}
+  #search::placeholder{color:#7C8FB5;}
+  #search:focus{border-color:#8FA3C9;}
+  #refreshBtn{font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600; border:1px solid #2A3B5C; background:#1F3050; color:var(--paper); border-radius:10px; padding:0 14px; cursor:pointer;}
+  #refreshBtn:active{transform:scale(0.96);}
+  .meta-row{display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8FA3C9;}
+  #settingsToggle{background:none; border:none; color:#8FA3C9; font-family:'IBM Plex Mono',monospace; font-size:11px; cursor:pointer; text-decoration:underline; padding:0;}
+
+  #settingsPanel{display:none; background:#1F3050; padding:14px 18px; color:var(--paper);}
+  #settingsPanel.open{display:block;}
+  #settingsPanel label{display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#8FA3C9; margin:10px 0 4px;}
+  #settingsPanel input{width:100%; font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 10px; border-radius:8px; border:1px solid #2A3B5C; background:#16233D; color:var(--paper); outline:none;}
+  #settingsPanel .hint{font-size:12px; color:#8FA3C9; margin-top:10px; line-height:1.5;}
+  #saveSettings{margin-top:12px; width:100%; padding:10px; border:none; border-radius:8px; background:var(--paper); color:var(--ink); font-weight:600; cursor:pointer;}
+
+  main{flex:1; padding:14px 14px 40px;}
+  #status{text-align:center; padding:40px 20px; color:var(--slate); font-size:14px; line-height:1.6;}
+  .list{display:flex; flex-direction:column; gap:10px;}
+  .card{position:relative; background:var(--paper-raised); border:1px solid var(--hair); border-radius:12px; padding:14px 16px 14px 30px; animation:rise .28s ease backwards;}
+  .list .card:nth-child(n){animation-delay:calc(var(--i, 0) * 18ms);}
+  @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+  .card::before{content:""; position:absolute; left:12px; top:20px; width:7px; height:7px; border-radius:50%; background:var(--paper); border:2px solid var(--hair);}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .card-name{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; line-height:1.25;}
+  .card-cat{font-size:12px; color:var(--slate); margin-top:2px;}
+  .qty{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:19px; white-space:nowrap;}
+  .card-bottom{display:flex; justify-content:space-between; align-items:center; margin-top:10px;}
+  .badge{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:99px;}
+  .badge.ok{background:var(--green-bg); color:var(--green);}
+  .badge.low{background:var(--amber-bg); color:var(--amber);}
+  .badge.critical{background:var(--rust-bg); color:var(--rust);}
+  .updated{font-size:11px; color:var(--slate);}
+
+  .log-row{display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--hair);}
+  .log-btn{flex:1; font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:600; letter-spacing:.03em; border-radius:8px; padding:8px 0; cursor:pointer; border:none;}
+  .log-btn.in{background:var(--green-bg); color:var(--green);}
+  .log-btn.out{background:var(--rust-bg); color:var(--rust);}
+  .log-btn:active{transform:scale(0.97);}
+  .signin-hint{font-size:12px; color:var(--slate); margin-top:12px; padding-top:12px; border-top:1px dashed var(--hair); text-align:center;}
+  .signin-hint a{color:var(--blue); cursor:pointer; text-decoration:underline;}
+
+  .empty{text-align:center; padding:60px 20px; color:var(--slate); font-size:14px;}
+  footer{text-align:center; padding:16px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--slate); letter-spacing:.03em;}
+
+  /* ---------- Modal (shared: sign-in + log transaction) ---------- */
+  .overlay{display:none; position:fixed; inset:0; background:rgba(22,35,61,.55); z-index:50; align-items:flex-end; justify-content:center;}
+  .overlay.open{display:flex;}
+  .sheet{width:100%; max-width:520px; background:var(--paper-raised); border-radius:16px 16px 0 0; padding:22px 20px 26px; animation:slideup .22s ease;}
+  @keyframes slideup{ from{transform:translateY(16px); opacity:0;} to{transform:none; opacity:1;} }
+  .sheet h2{font-family:'Space Grotesk',sans-serif; font-size:18px; margin:0 0 4px;}
+  .sheet .sub{font-size:12.5px; color:var(--slate); margin:0 0 16px;}
+  .sheet label{display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate); margin:12px 0 4px;}
+  .sheet input, .sheet select{width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:10px 12px; border-radius:9px; border:1px solid var(--hair); background:var(--paper); color:var(--ink); outline:none;}
+  .sheet input:focus, .sheet select:focus{border-color:var(--blue);}
+  .sheet-actions{display:flex; gap:10px; margin-top:20px;}
+  .sheet-actions button{flex:1; padding:11px 0; border-radius:9px; border:none; font-weight:600; cursor:pointer; font-size:14px;}
+  .btn-cancel{background:var(--paper); color:var(--slate); border:1px solid var(--hair) !important;}
+  .btn-confirm{background:var(--ink); color:var(--paper);}
+  .sheet-error{color:var(--rust); font-size:12.5px; margin-top:10px; display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="title-row">
+      <div>
+        <p class="eyebrow">Cabitan NHS · Inventory</p>
+        <h1>Stock Check</h1>
+      </div>
+      <div id="authControl"></div>
+    </div>
+    <div class="search-row">
+      <input id="search" type="text" placeholder="Search a supply or category…" autocomplete="off" />
+      <button id="refreshBtn">Refresh</button>
+    </div>
+    <div class="meta-row">
+      <span id="metaText">Not connected</span>
+      <button id="settingsToggle">Connection settings</button>
+    </div>
+  </header>
+
+  <div id="settingsPanel">
+    <label for="supaUrl">Supabase Project URL</label>
+    <input id="supaUrl" type="text" placeholder="https://xxxx.supabase.co" />
+    <label for="supaKey">Supabase Anon (public) Key</label>
+    <input id="supaKey" type="text" placeholder="eyJhbGciOi..." />
+    <button id="saveSettings">Save &amp; Connect</button>
+    <p class="hint">
+      Use the <strong>anon/public</strong> key only — never the service_role key.
+      <code>supply_data</code> needs Row Level Security: SELECT open to everyone,
+      INSERT restricted to signed-in staff. Settings are saved on this device only.
+    </p>
+  </div>
+
+  <main>
+    <div id="status">Enter your Supabase connection details to load current stock.</div>
+    <div class="list" id="list"></div>
+  </main>
+
+  <footer>SYNCS FROM SUPABASE · STAFF SIGN-IN REQUIRED TO LOG SUPPLIES</footer>
+</div>
+
+<!-- Sign-in sheet -->
+<div class="overlay" id="signinOverlay">
+  <div class="sheet">
+    <h2>Staff Sign In</h2>
+    <p class="sub">Sign in with the account your admin created for you in Supabase.</p>
+    <label for="signinEmail">Email</label>
+    <input id="signinEmail" type="email" autocomplete="username" />
+    <label for="signinPassword">Password</label>
+    <input id="signinPassword" type="password" autocomplete="current-password" />
+    <p class="sheet-error" id="signinError"></p>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="signinCancel">Cancel</button>
+      <button class="btn-confirm" id="signinConfirm">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log transaction sheet -->
+<div class="overlay" id="logOverlay">
+  <div class="sheet">
+    <h2 id="logTitle">Log Supplies</h2>
+    <p class="sub" id="logSub"></p>
+    <label for="logQty">Quantity</label>
+    <input id="logQty" type="number" min="1" inputmode="numeric" />
+    <p class="sheet-error" id="logError"></p>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="logCancel">Cancel</button>
+      <button class="btn-confirm" id="logConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- localStorage-backed shim (portable version) ----------
+// Replaces Claude's artifact-only window.storage API with plain
+// localStorage, which works in any normal browser -- including inside a
+// Google Apps Script Web App's HtmlService page.
+window.storage = {
+  async get(key) {
+    const v = localStorage.getItem(key);
+    return v === null ? null : { value: v };
+  },
+  async set(key, value) {
+    localStorage.setItem(key, value);
+    return { key, value };
+  },
+  async delete(key) {
+    localStorage.removeItem(key);
+    return { key, deleted: true };
+  },
+};
+
+const $ = (id) => document.getElementById(id);
+let allItems = [];       // aggregated stock, keyed list
+let session = null;      // { access_token, refresh_token, email }
+let pendingLog = null;   // { item, status }
+
+function supaUrl(){ return $('supaUrl').value.trim().replace(/\/$/, ''); }
+function supaKey(){ return $('supaKey').value.trim(); }
+
+// ---------- Persisted settings & session ----------
+// This is the PORTABLE version: window.storage above is a small shim over
+// localStorage, so this file works as-is on any normal web host --
+// Google Apps Script (HtmlService), GitHub Pages, Netlify, your own
+// server, etc. No changes needed to deploy it.
+async function loadSettings() {
+  try {
+    const res = await window.storage.get('supabase-config');
+    if (res && res.value) {
+      const cfg = JSON.parse(res.value);
+      $('supaUrl').value = cfg.url || '';
+      $('supaKey').value = cfg.key || '';
+    }
+  } catch (e) { /* first run, nothing saved yet */ }
+
+  try {
+    const res = await window.storage.get('supabase-session');
+    if (res && res.value) session = JSON.parse(res.value);
+  } catch (e) { /* not signed in */ }
+
+  renderAuthControl();
+  if ($('supaUrl').value && $('supaKey').value) fetchStock();
+}
+
+async function saveSettings() {
+  const url = supaUrl(), key = supaKey();
+  if (!url || !key) { alert('Please enter both the project URL and the anon key.'); return; }
+  try { await window.storage.set('supabase-config', JSON.stringify({ url, key })); }
+  catch (e) { console.error('Could not save settings', e); }
+  $('settingsPanel').classList.remove('open');
+  fetchStock();
+}
+
+async function persistSession() {
+  try { await window.storage.set('supabase-session', JSON.stringify(session)); }
+  catch (e) { console.error('Could not save session', e); }
+}
+
+async function clearSession() {
+  session = null;
+  try { await window.storage.delete('supabase-session'); } catch (e) {}
+  renderAuthControl();
+  render(filteredItems());
+}
+
+// ---------- Auth (Supabase GoTrue REST, no library needed) ----------
+function renderAuthControl() {
+  const el = $('authControl');
+  if (session) {
+    el.innerHTML = `<span id="authEmail">${escapeHtml(session.email)}</span><button id="signOutBtn">Sign out</button>`;
+    $('signOutBtn').addEventListener('click', clearSession);
+  } else {
+    el.innerHTML = `<button id="signInBtn">Staff Sign In</button>`;
+    $('signInBtn').addEventListener('click', () => openOverlay('signinOverlay'));
+  }
+}
+
+async function doSignIn() {
+  const email = $('signinEmail').value.trim();
+  const password = $('signinPassword').value;
+  $('signinError').style.display = 'none';
+  if (!email || !password) return;
+
+  try {
+    const res = await fetch(`${supaUrl()}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { apikey: supaKey(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'Sign in failed');
+
+    session = { access_token: data.access_token, refresh_token: data.refresh_token, email };
+    await persistSession();
+    renderAuthControl();
+    closeOverlay('signinOverlay');
+    $('signinEmail').value = ''; $('signinPassword').value = '';
+    render(filteredItems());
+  } catch (e) {
+    $('signinError').textContent = e.message;
+    $('signinError').style.display = 'block';
+  }
+}
+
+async function refreshIfNeeded() {
+  // Access tokens expire; if a write fails on auth, try the refresh token once.
+  if (!session || !session.refresh_token) return false;
+  try {
+    const res = await fetch(`${supaUrl()}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { apikey: supaKey(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error('expired');
+    session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email };
+    await persistSession();
+    return true;
+  } catch (e) {
+    await clearSession();
+    return false;
+  }
+}
+
+// ---------- Stock data ----------
+async function fetchStock() {
+  const url = supaUrl(), key = supaKey();
+  if (!url || !key) {
+    $('status').textContent = 'Enter your Supabase connection details to load current stock.';
+    $('status').style.display = 'block';
+    return;
+  }
+  $('status').style.display = 'block';
+  $('status').textContent = 'Loading…';
+  $('list').innerHTML = '';
+
+  try {
+    const endpoint = `${url}/rest/v1/supply_data?select=name,category,supplier,unit,price,quantity,status,updated_at&deleted=eq.false&order=name.asc`;
+    const res = await fetch(endpoint, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    const rows = await res.json();
+
+    // supply_data is transaction-level (one row per In/Out event) -- aggregate
+    // into current stock per product, same logic as the desktop dashboard's
+    // fetch_product_stock(). Also keep the last-seen category/supplier/unit/
+    // price so logging a new transaction can reuse them.
+    const byName = {};
+    for (const row of rows) {
+      const k = row.name || '(unnamed)';
+      if (!byName[k]) byName[k] = { name: k, category: row.category, supplier: row.supplier, unit: row.unit, price: row.price, qty: 0, updated_at: row.updated_at };
+      byName[k].qty += row.status === 'In' ? Number(row.quantity) : -Number(row.quantity);
+      if (row.updated_at > byName[k].updated_at) {
+        byName[k].updated_at = row.updated_at;
+        byName[k].category = row.category; byName[k].supplier = row.supplier;
+        byName[k].unit = row.unit; byName[k].price = row.price;
+      }
+    }
+    allItems = Object.values(byName).sort((a, b) => a.name.localeCompare(b.name));
+    $('metaText').textContent = `${allItems.length} products · updated ${new Date().toLocaleTimeString()}`;
+    render(filteredItems());
+  } catch (e) {
+    $('status').style.display = 'block';
+    $('status').textContent = `Couldn't load stock: ${e.message}. Check your URL/key and that supply_data allows anon SELECT.`;
+    $('metaText').textContent = 'Connection error';
+  }
+}
+
+function filteredItems() {
+  const q = $('search').value.trim().toLowerCase();
+  if (!q) return allItems;
+  return allItems.filter(i => i.name.toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q));
+}
+
+function statusFor(qty) {
+  if (qty < 4) return { cls: 'critical', label: 'Critical' };
+  if (qty <= 5) return { cls: 'low', label: 'Low stock' };
+  return { cls: 'ok', label: 'In stock' };
+}
+
+function render(items) {
+  const list = $('list');
+  list.innerHTML = '';
+  if (items.length === 0) {
+    $('status').style.display = 'block';
+    $('status').textContent = 'No matching supplies.';
+    return;
+  }
+  $('status').style.display = 'none';
+
+  items.forEach((item, i) => {
+    const st = statusFor(item.qty);
+    const when = item.updated_at ? new Date(item.updated_at).toLocaleDateString() : '—';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.setProperty('--i', i);
+    card.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="card-name">${escapeHtml(item.name)}</div>
+          <div class="card-cat">${escapeHtml(item.category || 'Uncategorized')}</div>
+        </div>
+        <div class="qty">${item.qty}</div>
+      </div>
+      <div class="card-bottom">
+        <span class="badge ${st.cls}">${st.label}</span>
+        <span class="updated">Last activity ${when}</span>
+      </div>
+      ${session ? `
+        <div class="log-row">
+          <button class="log-btn in" data-name="${escapeHtml(item.name)}" data-status="In">+ Log In</button>
+          <button class="log-btn out" data-name="${escapeHtml(item.name)}" data-status="Out">− Log Out</button>
+        </div>
+      ` : `
+        <div class="signin-hint"><a data-signin>Sign in</a> to log a transaction for this item</div>
+      `}
+    `;
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll('.log-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = allItems.find(i => i.name === btn.dataset.name);
+      openLogSheet(item, btn.dataset.status);
+    });
+  });
+  list.querySelectorAll('[data-signin]').forEach(a => a.addEventListener('click', () => openOverlay('signinOverlay')));
+}
+
+// ---------- Log transaction ----------
+function openLogSheet(item, status) {
+  pendingLog = { item, status };
+  $('logTitle').textContent = status === 'In' ? 'Log Supplies In' : 'Log Supplies Out';
+  $('logSub').textContent = `${item.name} · currently ${item.qty} on hand · logged as ${session.email}`;
+  $('logQty').value = '';
+  $('logError').style.display = 'none';
+  openOverlay('logOverlay');
+  setTimeout(() => $('logQty').focus(), 50);
+}
+
+async function confirmLog() {
+  const qty = parseInt($('logQty').value, 10);
+  if (!qty || qty <= 0) {
+    $('logError').textContent = 'Enter a quantity greater than 0.';
+    $('logError').style.display = 'block';
+    return;
+  }
+
+  const { item, status } = pendingLog;
+  const row = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+    category: item.category, supplier: item.supplier, name: item.name, unit: item.unit,
+    price: item.price, quantity: qty, description: '', receiver: session.email,
+    date: new Date().toISOString().slice(0, 10), status,
+    updated_at: new Date().toISOString(), deleted: false,
+  };
+
+  const attempt = async () => fetch(`${supaUrl()}/rest/v1/supply_data`, {
+    method: 'POST',
+    headers: {
+      apikey: supaKey(),
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(row),
+  });
+
+  try {
+    let res = await attempt();
+    if (res.status === 401) {
+      // Access token likely expired -- refresh once and retry.
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      res = await attempt();
+    }
+    if (!res.ok) throw new Error(`Save failed (${res.status}). Check the INSERT policy for authenticated staff.`);
+
+    closeOverlay('logOverlay');
+    await fetchStock();
+  } catch (e) {
+    $('logError').textContent = e.message;
+    $('logError').style.display = 'block';
+  }
+}
+
+// ---------- Overlay helpers ----------
+function openOverlay(id) { $(id).classList.add('open'); }
+function closeOverlay(id) { $(id).classList.remove('open'); }
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+// ---------- Events ----------
+$('search').addEventListener('input', () => render(filteredItems()));
+$('refreshBtn').addEventListener('click', fetchStock);
+$('settingsToggle').addEventListener('click', () => $('settingsPanel').classList.toggle('open'));
+$('saveSettings').addEventListener('click', saveSettings);
+
+$('signinCancel').addEventListener('click', () => closeOverlay('signinOverlay'));
+$('signinConfirm').addEventListener('click', doSignIn);
+$('logCancel').addEventListener('click', () => closeOverlay('logOverlay'));
+$('logConfirm').addEventListener('click', confirmLog);
+
+loadSettings();
+</script>
+</body>
+</html>
