@@ -53,9 +53,12 @@
   just to view stock there.
 
   ITEM REQUEST BOARD: lets signed-in staff submit a request for a needed
-  item (with the request date saved automatically), see the list of open
-  requests, and mark one as fulfilled once it's been provided. Run this
-  once in the SQL editor:
+  item (with the request date saved automatically). Only ADMINS can see the
+  list of requests or mark one fulfilled -- enforced here at the database
+  level via the same is_admin app_metadata flag used by index.html's
+  "Manage Staff" panel, not just hidden in the page. Run this once in the
+  SQL editor (the drop statements first remove the old open-to-all-staff
+  policies if you already ran an earlier version of this):
 
     create table if not exists item_requests (
       id uuid primary key default gen_random_uuid(),
@@ -69,12 +72,20 @@
     );
 
     alter table item_requests enable row level security;
-    create policy "staff can read item requests" on item_requests
-      for select using (auth.role() = 'authenticated');
+
+    drop policy if exists "staff can read item requests" on item_requests;
+    drop policy if exists "staff can update item requests" on item_requests;
+
     create policy "staff can submit item requests" on item_requests
       for insert with check (auth.role() = 'authenticated');
-    create policy "staff can update item requests" on item_requests
-      for update using (auth.role() = 'authenticated');
+
+    create policy "admins can read item requests" on item_requests
+      for select
+      using ((auth.jwt() -> 'app_metadata' ->> 'is_admin')::boolean = true);
+
+    create policy "admins can update item requests" on item_requests
+      for update
+      using ((auth.jwt() -> 'app_metadata' ->> 'is_admin')::boolean = true);
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -347,6 +358,10 @@ function showDashboard() {
   $('signinScreen').style.display = 'none';
   $('newPasswordScreen').style.display = 'none';
   $('dashboardContent').style.display = 'block';
+  // Only admins can see the list of who requested what and mark things
+  // fulfilled -- regular staff can still submit requests (requestSection
+  // stays visible to everyone), they just never see the list itself.
+  $('requestsListSection').style.display = session?.isAdmin ? 'block' : 'none';
   refreshAll();
 }
 
@@ -365,7 +380,7 @@ async function doSignIn() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error_description || data.msg || 'Sign in failed');
 
-    session = { access_token: data.access_token, refresh_token: data.refresh_token, email };
+    session = { access_token: data.access_token, refresh_token: data.refresh_token, email, isAdmin: data.user?.app_metadata?.is_admin === true };
     await persistSession();
     $('signinEmail').value = ''; $('signinPassword').value = '';
 
@@ -427,7 +442,7 @@ async function refreshIfNeeded() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error('expired');
-    session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email };
+    session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email, isAdmin: session.isAdmin };
     await persistSession();
     return true;
   } catch (e) {
@@ -671,7 +686,9 @@ $('reqSubmit').addEventListener('click', submitItemRequest);
 async function refreshAll() {
   $('globalStatus').style.display = 'none';
   try {
-    await Promise.all([loadPifDistribution(), loadSuppliesStatus(), loadRecentActivity(), loadBookCounts(), loadItemRequests()]);
+    const tasks = [loadPifDistribution(), loadSuppliesStatus(), loadRecentActivity(), loadBookCounts()];
+    if (session?.isAdmin) tasks.push(loadItemRequests());
+    await Promise.all(tasks);
     $('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
   } catch (e) {
     $('globalStatus').style.display = 'block';
