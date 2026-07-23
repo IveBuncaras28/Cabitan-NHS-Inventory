@@ -101,6 +101,13 @@
   .btn-cancel{background:var(--paper); color:var(--slate); border:1px solid var(--hair) !important;}
   .btn-confirm{background:var(--ink); color:var(--paper);}
   .sheet-error{color:var(--rust); font-size:12.5px; margin-top:10px; display:none;}
+  .request-row{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--hair);}
+  .request-row:last-child{border-bottom:none;}
+  .request-meta{font-size:13px;}
+  .request-meta .name{font-family:'Space Grotesk',sans-serif; font-weight:600;}
+  .request-meta .sub{font-size:11.5px; color:var(--slate); margin-top:1px;}
+  .fulfill-btn{background:var(--green-bg); color:var(--green); border:none; border-radius:8px; padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;}
+  .fulfill-btn:active{transform:scale(0.96);}
 </style>
 </head>
 <body>
@@ -201,6 +208,18 @@
   </div>
 </div>
 
+<!-- Pending Requests panel (admins only) -->
+<div class="overlay" id="requestsOverlay">
+  <div class="sheet" style="max-height:80vh; overflow-y:auto;">
+    <h2>Pending Requests</h2>
+    <p class="sub">Only admins can see this list. Stock only changes once you mark a request Fulfilled.</p>
+    <div id="requestsList"></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="requestsCancel">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Log transaction sheet -->
 <div class="overlay" id="logOverlay">
   <div class="sheet">
@@ -294,9 +313,13 @@ function renderAuthControl() {
   const el = $('authControl');
   if (session) {
     const manageBtn = session.isAdmin ? `<button id="manageStaffBtn" style="margin-top:4px;">Manage Staff</button>` : '';
-    el.innerHTML = `<span id="authEmail">${escapeHtml(session.email)}</span><button id="signOutBtn">Sign out</button>${manageBtn}`;
+    const requestsBtn = session.isAdmin ? `<button id="viewRequestsBtn" style="margin-top:4px;">Pending Requests</button>` : '';
+    el.innerHTML = `<span id="authEmail">${escapeHtml(session.email)}</span><button id="signOutBtn">Sign out</button>${manageBtn}${requestsBtn}`;
     $('signOutBtn').addEventListener('click', clearSession);
-    if (session.isAdmin) $('manageStaffBtn').addEventListener('click', () => openOverlay('manageStaffOverlay'));
+    if (session.isAdmin) {
+      $('manageStaffBtn').addEventListener('click', () => openOverlay('manageStaffOverlay'));
+      $('viewRequestsBtn').addEventListener('click', openRequestsPanel);
+    }
   } else {
     el.innerHTML = `<button id="signInBtn">Staff Sign In</button>`;
     $('signInBtn').addEventListener('click', () => openOverlay('signinOverlay'));
@@ -539,10 +562,109 @@ function render(items) {
 }
 
 // ---------- Log transaction ----------
+// ---------- Pending Requests (admins only) ----------
+async function openRequestsPanel() {
+  openOverlay('requestsOverlay');
+  await loadPendingRequests();
+}
+
+async function loadPendingRequests() {
+  const el = $('requestsList');
+  el.innerHTML = '<p class="sub">Loading…</p>';
+  try {
+    const res = await fetch(
+      `${supaUrl()}/rest/v1/item_requests?select=*&status=eq.Pending&order=requested_at.asc`,
+      { headers: { apikey: supaKey(), Authorization: `Bearer ${session.access_token}` } }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || `Request failed (${res.status})`);
+    }
+    const rows = await res.json();
+
+    el.innerHTML = rows.length ? '' : '<p class="sub">No pending requests.</p>';
+    rows.forEach(r => {
+      const when = r.requested_at ? new Date(r.requested_at).toLocaleString() : '';
+      const div = document.createElement('div');
+      div.className = 'request-row';
+      div.innerHTML = `
+        <div class="request-meta">
+          <div class="name">${escapeHtml(r.item_name)} × ${r.quantity}</div>
+          <div class="sub">${escapeHtml(r.requested_by || 'Unknown')} · ${when}</div>
+        </div>
+        <button class="fulfill-btn" data-id="${r.id}">Mark Fulfilled</button>
+      `;
+      el.appendChild(div);
+    });
+    el.querySelectorAll('.fulfill-btn').forEach(btn => {
+      btn.addEventListener('click', () => fulfillRequest(rows.find(r => r.id === btn.dataset.id), btn));
+    });
+  } catch (e) {
+    el.innerHTML = `<p class="sub" style="color:var(--rust);">Couldn't load requests: ${e.message}</p>`;
+  }
+}
+
+async function fulfillRequest(request, btn) {
+  if (!request) return;
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+
+  const authHeaders = {
+    apikey: supaKey(),
+    Authorization: `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    // 1. Mark the request Fulfilled
+    const updateRes = await fetch(`${supaUrl()}/rest/v1/item_requests?id=eq.${request.id}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        status: 'Fulfilled',
+        fulfilled_by: session.email,
+        fulfilled_at: new Date().toISOString(),
+      }),
+    });
+    if (!updateRes.ok) {
+      const body = await updateRes.json().catch(() => ({}));
+      throw new Error(body.message || `Couldn't update request (${updateRes.status})`);
+    }
+
+    // 2. Only now does stock actually move -- create the real "Out" transaction
+    const stockRow = {
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+      category: request.category, supplier: request.supplier, name: request.item_name,
+      unit: request.unit, price: request.price, quantity: request.quantity,
+      description: '', receiver: request.requested_by,
+      date: new Date().toISOString().slice(0, 10), status: 'Out',
+      updated_at: new Date().toISOString(), deleted: false,
+    };
+    const stockRes = await fetch(`${supaUrl()}/rest/v1/supply_data`, {
+      method: 'POST',
+      headers: { ...authHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify(stockRow),
+    });
+    if (!stockRes.ok) {
+      const body = await stockRes.json().catch(() => ({}));
+      throw new Error(body.message || `Request marked Fulfilled, but stock update failed (${stockRes.status})`);
+    }
+
+    await loadPendingRequests();
+    await fetchStock();
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Mark Fulfilled';
+  }
+}
+
 function openLogSheet(item, status) {
   pendingLog = { item, status };
-  $('logTitle').textContent = status === 'In' ? 'Log Supplies In' : 'Log Supplies Out';
-  $('logSub').textContent = `${item.name} · currently ${item.qty} on hand · logged as ${session.email}`;
+  $('logTitle').textContent = status === 'In' ? 'Log Supplies In' : 'Request Supplies Out';
+  $('logSub').textContent = status === 'In'
+    ? `${item.name} · currently ${item.qty} on hand · logged as ${session.email}`
+    : `${item.name} · currently ${item.qty} on hand · this goes to an admin for approval, requested by ${session.email}`;
   $('logQty').value = '';
   $('logError').style.display = 'none';
   openOverlay('logOverlay');
@@ -558,15 +680,27 @@ async function confirmLog() {
   }
 
   const { item, status } = pendingLog;
-  const row = {
-    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
-    category: item.category, supplier: item.supplier, name: item.name, unit: item.unit,
-    price: item.price, quantity: qty, description: '', receiver: session.email,
-    date: new Date().toISOString().slice(0, 10), status,
-    updated_at: new Date().toISOString(), deleted: false,
-  };
 
-  const attempt = async () => fetch(`${supaUrl()}/rest/v1/supply_data`, {
+  // "In" (receiving new stock) still applies immediately. "Out" (taking stock
+  // out) now becomes a pending request instead -- stock only actually changes
+  // once an admin marks it Fulfilled (see fulfillRequest()).
+  const endpoint = status === 'In' ? 'supply_data' : 'item_requests';
+  const row = status === 'In'
+    ? {
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+        category: item.category, supplier: item.supplier, name: item.name, unit: item.unit,
+        price: item.price, quantity: qty, description: '', receiver: session.email,
+        date: new Date().toISOString().slice(0, 10), status,
+        updated_at: new Date().toISOString(), deleted: false,
+      }
+    : {
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+        item_name: item.name, category: item.category, supplier: item.supplier,
+        unit: item.unit, price: item.price, quantity: qty,
+        requested_by: session.email, status: 'Pending',
+      };
+
+  const attempt = async () => fetch(`${supaUrl()}/rest/v1/${endpoint}`, {
     method: 'POST',
     headers: {
       apikey: supaKey(),
@@ -591,7 +725,11 @@ async function confirmLog() {
     }
 
     closeOverlay('logOverlay');
-    await fetchStock();
+    if (status === 'In') {
+      await fetchStock();
+    } else {
+      alert(`Request submitted -- an admin needs to mark it Fulfilled before stock updates.`);
+    }
   } catch (e) {
     $('logError').textContent = e.message;
     $('logError').style.display = 'block';
@@ -618,6 +756,7 @@ $('signinCancel').addEventListener('click', () => closeOverlay('signinOverlay'))
 $('signinConfirm').addEventListener('click', doSignIn);
 $('newPasswordConfirm').addEventListener('click', doSetNewPassword);
 $('manageStaffCancel').addEventListener('click', () => closeOverlay('manageStaffOverlay'));
+$('requestsCancel').addEventListener('click', () => closeOverlay('requestsOverlay'));
 $('manageStaffConfirm').addEventListener('click', createStaffAccount);
 $('logCancel').addEventListener('click', () => closeOverlay('logOverlay'));
 $('logConfirm').addEventListener('click', confirmLog);
