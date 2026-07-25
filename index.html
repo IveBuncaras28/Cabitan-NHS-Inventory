@@ -15,6 +15,14 @@
   5. Uses localStorage to remember your connection settings and sign-in
      session on that device -- works fine on GitHub Pages (unlike Claude's
      artifact sandbox, which needed a different storage API).
+
+  PENDING REQUESTS: "Log Out" on an item here writes a row to the
+  item_requests table instead of moving stock right away -- an admin has
+  to open "Pending Requests" and Mark Fulfilled (or Remove) before stock
+  actually changes. This page and dashboard.html BOTH read/write the same
+  item_requests table, so they share one schema -- see the SQL and
+  migration notes in dashboard.html's top comment for the create-table /
+  RLS policy statements.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -29,7 +37,7 @@
   *{box-sizing:border-box;}
   @media (prefers-reduced-motion: reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
   html,body{margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,sans-serif; -webkit-tap-highlight-color:transparent;}
-  .app{max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  .app{width:100%; max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
 
   header{position:sticky; top:0; z-index:10; background:var(--ink); color:var(--paper); padding:18px 18px 14px;}
   .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#8FA3C9; margin:0 0 4px;}
@@ -108,6 +116,23 @@
   .request-meta .sub{font-size:11.5px; color:var(--slate); margin-top:1px;}
   .fulfill-btn{background:var(--green-bg); color:var(--green); border:none; border-radius:8px; padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;}
   .fulfill-btn:active{transform:scale(0.96);}
+  .request-actions{display:flex; gap:8px; flex-shrink:0;}
+  .remove-btn{background:var(--rust-bg); color:var(--rust); border:none; border-radius:8px; padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;}
+  .remove-btn:active{transform:scale(0.96);}
+
+  /* ---------- Responsive: adapt to tablet / desktop instead of staying phone-width ---------- */
+  @media (min-width: 640px){
+    .app{max-width:640px;}
+    header{padding:22px 26px 16px;}
+    main{padding:18px 4px 48px;}
+    .list{display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;}
+    .overlay{align-items:center; padding:24px;}
+    .sheet{max-width:440px; border-radius:16px; max-height:85vh; overflow-y:auto;}
+  }
+  @media (min-width: 1000px){
+    .app{max-width:900px;}
+    .list{grid-template-columns:repeat(3, 1fr);}
+  }
 </style>
 </head>
 <body>
@@ -212,7 +237,7 @@
 <div class="overlay" id="requestsOverlay">
   <div class="sheet" style="max-height:80vh; overflow-y:auto;">
     <h2>Pending Requests</h2>
-    <p class="sub">Only admins can see this list. Stock only changes once you mark a request Fulfilled.</p>
+    <p class="sub">Only admins can see this list. Stock only changes once you mark a request Fulfilled. Remove dismisses a request without touching stock.</p>
     <div id="requestsList"></div>
     <div class="sheet-actions">
       <button class="btn-cancel" id="requestsCancel">Close</button>
@@ -592,12 +617,18 @@ async function loadPendingRequests() {
           <div class="name">${escapeHtml(r.item_name)} × ${r.quantity}</div>
           <div class="sub">${escapeHtml(r.requested_by || 'Unknown')} · ${when}</div>
         </div>
-        <button class="fulfill-btn" data-id="${r.id}">Mark Fulfilled</button>
+        <div class="request-actions">
+          <button class="remove-btn" data-id="${r.id}">Remove</button>
+          <button class="fulfill-btn" data-id="${r.id}">Mark Fulfilled</button>
+        </div>
       `;
       el.appendChild(div);
     });
     el.querySelectorAll('.fulfill-btn').forEach(btn => {
       btn.addEventListener('click', () => fulfillRequest(rows.find(r => r.id === btn.dataset.id), btn));
+    });
+    el.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', () => removeRequest(rows.find(r => r.id === btn.dataset.id), btn));
     });
   } catch (e) {
     el.innerHTML = `<p class="sub" style="color:var(--rust);">Couldn't load requests: ${e.message}</p>`;
@@ -656,6 +687,46 @@ async function fulfillRequest(request, btn) {
     alert(e.message);
     btn.disabled = false;
     btn.textContent = 'Mark Fulfilled';
+  }
+}
+
+async function removeRequest(request, btn) {
+  if (!request) return;
+  if (!confirm(`Remove the request for "${request.item_name}" × ${request.quantity}? This does not change stock.`)) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Removing…';
+
+  try {
+    const attempt = () => fetch(`${supaUrl()}/rest/v1/item_requests?id=eq.${request.id}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: supaKey(),
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        status: 'Removed',
+        fulfilled_by: session.email,
+        fulfilled_at: new Date().toISOString(),
+      }),
+    });
+    let res = await attempt();
+    if (res.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      res = await attempt();
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || `Couldn't remove request (${res.status})`);
+    }
+    await loadPendingRequests();
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Remove';
   }
 }
 
