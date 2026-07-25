@@ -695,17 +695,17 @@ async function fulfillRequest(request, btn) {
   btn.disabled = true;
   btn.textContent = 'Working…';
 
-  const authHeaders = {
+  const authHeaders = () => ({
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${session.access_token}`,
     'Content-Type': 'application/json',
-  };
+  });
 
   try {
     // 1. Mark the request Fulfilled
     const attemptUpdate = () => fetch(`${SUPABASE_URL}/rest/v1/item_requests?id=eq.${request.id}`, {
       method: 'PATCH',
-      headers: { ...authHeaders, Prefer: 'return=minimal' },
+      headers: { ...authHeaders(), Prefer: 'return=minimal' },
       body: JSON.stringify({
         status: 'Fulfilled',
         fulfilled_by: session.email,
@@ -732,11 +732,17 @@ async function fulfillRequest(request, btn) {
       date: new Date().toISOString().slice(0, 10), status: 'Out',
       updated_at: new Date().toISOString(), deleted: false,
     };
-    const stockRes = await fetch(`${SUPABASE_URL}/rest/v1/supply_data`, {
+    const attemptStock = () => fetch(`${SUPABASE_URL}/rest/v1/supply_data`, {
       method: 'POST',
-      headers: { ...authHeaders, Prefer: 'return=minimal' },
+      headers: { ...authHeaders(), Prefer: 'return=minimal' },
       body: JSON.stringify(stockRow),
     });
+    let stockRes = await attemptStock();
+    if (stockRes.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      stockRes = await attemptStock();
+    }
     if (!stockRes.ok) {
       const body = await stockRes.json().catch(() => ({}));
       throw new Error(body.message || `Request marked Fulfilled, but stock update failed (${stockRes.status})`);
