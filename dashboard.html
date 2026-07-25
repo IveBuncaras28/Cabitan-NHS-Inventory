@@ -53,28 +53,34 @@
   just to view stock there.
 
   ITEM REQUEST BOARD: lets signed-in staff submit a request for a needed
-  item (with the request date saved automatically). Only ADMINS can see the
-  list of requests or mark one fulfilled -- enforced here at the database
-  level via the same is_admin app_metadata flag used by index.html's
-  "Manage Staff" panel, not just hidden in the page. Run this once in the
-  SQL editor (the drop statements first remove the old open-to-all-staff
-  policies if you already ran an earlier version of this):
+  item. Both this dashboard AND index.html (Stock Check -> "Log Out" on an
+  item) write to and read from the SAME item_requests table, so they must
+  share one schema. Only ADMINS can see the list of requests, mark one
+  Fulfilled, or Remove one -- enforced at the database level via the same
+  is_admin app_metadata flag used by index.html's "Manage Staff" panel.
+  Fulfilling a request (from either page) also inserts a matching "Out"
+  row into supply_data, so it needs the same staff INSERT policy on
+  supply_data that index.html's own "Log Out" flow already relies on.
+
+  FRESH INSTALL -- run once in the SQL editor:
 
     create table if not exists item_requests (
       id uuid primary key default gen_random_uuid(),
       item_name text not null,
-      quantity int,
+      category text,
+      supplier text,
+      unit text,
+      price numeric,
+      quantity int not null default 1,
       requested_by text,
       notes text,
+      status text not null default 'Pending',   -- 'Pending' | 'Fulfilled' | 'Removed'
       requested_at timestamptz not null default now(),
-      fulfilled boolean not null default false,
-      deleted boolean not null default false
+      fulfilled_by text,
+      fulfilled_at timestamptz
     );
 
     alter table item_requests enable row level security;
-
-    drop policy if exists "staff can read item requests" on item_requests;
-    drop policy if exists "staff can update item requests" on item_requests;
 
     create policy "staff can submit item requests" on item_requests
       for insert with check (auth.role() = 'authenticated');
@@ -86,6 +92,38 @@
     create policy "admins can update item requests" on item_requests
       for update
       using ((auth.jwt() -> 'app_metadata' ->> 'is_admin')::boolean = true);
+
+  MIGRATING an existing item_requests table (old boolean-based schema) to
+  the schema above -- run once, then re-check the two policies exist:
+
+    alter table item_requests add column if not exists category text;
+    alter table item_requests add column if not exists supplier text;
+    alter table item_requests add column if not exists unit text;
+    alter table item_requests add column if not exists price numeric;
+    alter table item_requests add column if not exists status text;
+    alter table item_requests add column if not exists fulfilled_by text;
+    alter table item_requests add column if not exists fulfilled_at timestamptz;
+
+    update item_requests set status = case
+      when fulfilled = true then 'Fulfilled'
+      when deleted = true then 'Removed'
+      else 'Pending'
+    end where status is null;
+
+    alter table item_requests alter column status set default 'Pending';
+    alter table item_requests alter column status set not null;
+    alter table item_requests drop column if exists fulfilled;
+    alter table item_requests drop column if exists deleted;
+
+    drop policy if exists "staff can read item requests" on item_requests;
+    drop policy if exists "staff can update item requests" on item_requests;
+
+  BOOKS BY GRADE + CONDITION: the dashboard now breaks book counts down by
+  condition within each grade level, so book_records needs a `condition`
+  text column (e.g. 'Good', 'Fair', 'Damaged', 'Lost'). Add it if it's not
+  there yet:
+
+    alter table book_records add column if not exists condition text not null default 'Good';
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -119,6 +157,14 @@
   .tile{background:var(--paper-raised); border:1px solid var(--hair); border-radius:12px; padding:14px 16px; animation:rise .3s ease backwards;}
   .tile-count{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:26px; color:var(--ink);}
   .tile-label{font-size:12px; color:var(--slate); margin-top:2px;}
+
+  /* ---- Books by grade + condition ---- */
+  .grade-tiles{grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));}
+  .grade-card{background:var(--paper-raised); border:1px solid var(--hair); border-radius:12px; padding:14px 16px; animation:rise .3s ease backwards;}
+  .grade-card-top{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .grade-card .tile-label{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; color:var(--ink); margin-top:0;}
+  .grade-card .tile-count{font-size:22px;}
+  .cond-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
 
   /* ---- Supplies status ---- */
   .list{display:flex; flex-direction:column; gap:8px;}
@@ -180,6 +226,21 @@
 
   .empty, #globalStatus{text-align:center; color:var(--slate); font-size:13.5px; padding:20px;}
   footer{text-align:center; padding:10px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--slate); letter-spacing:.03em;}
+
+  .req-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  .remove-btn{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; border:none; border-radius:8px; padding:6px 10px; background:var(--rust-bg); color:var(--rust); cursor:pointer; white-space:nowrap;}
+  .remove-btn:active{transform:scale(0.96);}
+
+  /* ---------- Responsive: adapt to tablet / desktop instead of staying phone-width ---------- */
+  @media (min-width: 700px){
+    .app{max-width:820px;}
+    section{padding:22px 26px;}
+    .list{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
+  }
+  @media (min-width: 1100px){
+    .app{max-width:1080px;}
+    .list{grid-template-columns:repeat(3, 1fr);}
+  }
 </style>
 </head>
 <body>
@@ -238,8 +299,8 @@
   </section>
 
   <section id="booksSection">
-    <h2><span class="dot" style="background:var(--amber);"></span>Books per Grade Level</h2>
-    <div class="tiles" id="bookTiles"></div>
+    <h2><span class="dot" style="background:var(--amber);"></span>Books by Grade Level &amp; Condition</h2>
+    <div class="tiles grade-tiles" id="bookTiles"></div>
   </section>
 
   <section id="activitySection">
@@ -503,28 +564,48 @@ async function loadPifDistribution() {
     : `<div class="empty">No PIF records yet.</div>`;
 }
 
-// ---------- Books per grade level ----------
+// ---------- Books per grade level & condition ----------
+function conditionClass(cond) {
+  const c = cond.toLowerCase();
+  if (c.includes('damag') || c.includes('lost') || c.includes('poor')) return 'critical';
+  if (c.includes('fair') || c.includes('worn') || c.includes('repair')) return 'low';
+  return 'ok'; // Good, New, etc.
+}
+
 async function loadBookCounts() {
-  const rows = await supaGet('book_records?select=grade_level,quantity&deleted=eq.false');
-  const totals = {};
+  const rows = await supaGet('book_records?select=grade_level,condition,quantity&deleted=eq.false');
+  const byGrade = {};
   for (const r of rows) {
     const grade = r.grade_level || 'Ungraded';
-    totals[grade] = (totals[grade] || 0) + Number(r.quantity || 0);
+    const cond = r.condition || 'Unspecified';
+    const qty = Number(r.quantity || 0);
+    if (!byGrade[grade]) byGrade[grade] = { total: 0, conditions: {} };
+    byGrade[grade].total += qty;
+    byGrade[grade].conditions[cond] = (byGrade[grade].conditions[cond] || 0) + qty;
   }
   // Sort Grade 7 -> Grade 12 numerically instead of alphabetically
-  const entries = Object.entries(totals).sort((a, b) => {
+  const entries = Object.entries(byGrade).sort((a, b) => {
     const numA = parseInt(a[0].replace(/\D/g, ''), 10) || 0;
     const numB = parseInt(b[0].replace(/\D/g, ''), 10) || 0;
     return numA - numB;
   });
   const el = $('bookTiles');
   el.innerHTML = entries.length
-    ? entries.map(([label, count], i) => `
-        <div class="tile" style="animation-delay:${i * 40}ms">
-          <div class="tile-count">${count}</div>
-          <div class="tile-label">${escapeHtml(label)}</div>
-        </div>
-      `).join('')
+    ? entries.map(([grade, data], i) => {
+        const condBadges = Object.entries(data.conditions)
+          .sort((a, b) => b[1] - a[1])
+          .map(([cond, count]) => `<span class="badge ${conditionClass(cond)}">${escapeHtml(cond)} · ${count}</span>`)
+          .join('');
+        return `
+          <div class="grade-card" style="animation-delay:${i * 40}ms">
+            <div class="grade-card-top">
+              <div class="tile-label">${escapeHtml(grade)}</div>
+              <div class="tile-count">${data.total}</div>
+            </div>
+            <div class="cond-row">${condBadges}</div>
+          </div>
+        `;
+      }).join('')
     : `<div class="empty">No books logged yet.</div>`;
 }
 
@@ -575,10 +656,10 @@ async function loadRecentActivity() {
     : `<span>No recent activity.</span>`;
 }
 
-// ---------- 4. Item requests ----------
+// ---------- 4. Item requests (shared item_requests table with index.html) ----------
 async function loadItemRequests() {
   const rows = await supaGet(
-    'item_requests?select=id,item_name,quantity,requested_by,notes,requested_at&deleted=eq.false&fulfilled=eq.false&order=requested_at.desc'
+    'item_requests?select=id,item_name,category,supplier,unit,price,quantity,requested_by,notes,status,requested_at&status=eq.Pending&order=requested_at.desc'
   );
   const el = $('requestsList');
   el.innerHTML = rows.length
@@ -591,8 +672,9 @@ async function loadItemRequests() {
               <div class="n">${escapeHtml(r.item_name)}${r.quantity ? ` · ${escapeHtml(String(r.quantity))}` : ''}</div>
               <div class="meta">${escapeHtml(meta)}</div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
+            <div class="req-actions">
               <div class="date">${when}</div>
+              <button class="remove-btn" data-id="${r.id}">Remove</button>
               <button class="fulfill-btn" data-id="${r.id}">Mark Fulfilled</button>
             </div>
           </div>
@@ -601,12 +683,82 @@ async function loadItemRequests() {
     : `<div class="empty">No pending requests.</div>`;
 
   el.querySelectorAll('.fulfill-btn').forEach(btn => {
-    btn.addEventListener('click', () => markFulfilled(btn.dataset.id));
+    btn.addEventListener('click', () => fulfillRequest(rows.find(r => r.id === btn.dataset.id), btn));
+  });
+  el.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => removeRequest(rows.find(r => r.id === btn.dataset.id), btn));
   });
 }
 
-async function markFulfilled(id) {
-  const attempt = () => fetch(`${SUPABASE_URL}/rest/v1/item_requests?id=eq.${id}`, {
+async function fulfillRequest(request, btn) {
+  if (!request) return;
+  btn.disabled = true;
+  btn.textContent = 'Working…';
+
+  const authHeaders = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${session.access_token}`,
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    // 1. Mark the request Fulfilled
+    const attemptUpdate = () => fetch(`${SUPABASE_URL}/rest/v1/item_requests?id=eq.${request.id}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        status: 'Fulfilled',
+        fulfilled_by: session.email,
+        fulfilled_at: new Date().toISOString(),
+      }),
+    });
+    let updateRes = await attemptUpdate();
+    if (updateRes.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      updateRes = await attemptUpdate();
+    }
+    if (!updateRes.ok) {
+      const body = await updateRes.json().catch(() => ({}));
+      throw new Error(body.message || `Couldn't update request (${updateRes.status})`);
+    }
+
+    // 2. Only now does stock actually move -- create the real "Out" transaction
+    const stockRow = {
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+      category: request.category, supplier: request.supplier, name: request.item_name,
+      unit: request.unit, price: request.price, quantity: request.quantity,
+      description: '', receiver: request.requested_by,
+      date: new Date().toISOString().slice(0, 10), status: 'Out',
+      updated_at: new Date().toISOString(), deleted: false,
+    };
+    const stockRes = await fetch(`${SUPABASE_URL}/rest/v1/supply_data`, {
+      method: 'POST',
+      headers: { ...authHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify(stockRow),
+    });
+    if (!stockRes.ok) {
+      const body = await stockRes.json().catch(() => ({}));
+      throw new Error(body.message || `Request marked Fulfilled, but stock update failed (${stockRes.status})`);
+    }
+
+    await loadItemRequests();
+    await loadSuppliesStatus();
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Mark Fulfilled';
+  }
+}
+
+async function removeRequest(request, btn) {
+  if (!request) return;
+  if (!confirm(`Remove the request for "${request.item_name}"? This does not change stock.`)) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Removing…';
+
+  const attempt = () => fetch(`${SUPABASE_URL}/rest/v1/item_requests?id=eq.${request.id}`, {
     method: 'PATCH',
     headers: {
       apikey: SUPABASE_ANON_KEY,
@@ -614,7 +766,11 @@ async function markFulfilled(id) {
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },
-    body: JSON.stringify({ fulfilled: true }),
+    body: JSON.stringify({
+      status: 'Removed',
+      fulfilled_by: session.email,
+      fulfilled_at: new Date().toISOString(),
+    }),
   });
   try {
     let res = await attempt();
@@ -625,17 +781,19 @@ async function markFulfilled(id) {
     }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || body.hint || `Update failed (${res.status}). Check the UPDATE policy on item_requests.`);
+      throw new Error(body.message || body.hint || `Couldn't remove request (${res.status})`);
     }
     await loadItemRequests();
   } catch (e) {
     alert(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Remove';
   }
 }
 
 async function submitItemRequest() {
   const item_name = $('reqItemName').value.trim();
-  const quantity = $('reqQty').value ? parseInt($('reqQty').value, 10) : null;
+  const quantity = $('reqQty').value ? parseInt($('reqQty').value, 10) : 1;
   const requested_by = $('reqBy').value.trim() || null;
   const notes = $('reqNotes').value.trim() || null;
   $('reqError').style.display = 'none';
@@ -655,7 +813,7 @@ async function submitItemRequest() {
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },
-    body: JSON.stringify({ item_name, quantity, requested_by, notes }),
+    body: JSON.stringify({ item_name, quantity, requested_by, notes, status: 'Pending' }),
   });
 
   try {
