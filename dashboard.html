@@ -138,7 +138,7 @@
   *{box-sizing:border-box;}
   @media (prefers-reduced-motion: reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
   html,body{margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,sans-serif;}
-  .app{max-width:920px; margin:0 auto; padding:0 0 40px;}
+  .app{max-width:1400px; margin:0 auto; padding:0 0 40px;}
 
   header{background:var(--ink); color:var(--paper); padding:22px 20px 20px;}
   .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#8FA3C9; margin:0;}
@@ -167,7 +167,7 @@
   .cond-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
 
   /* ---- Supplies status ---- */
-  .list{display:flex; flex-direction:column; gap:8px;}
+  .list{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:8px; align-items:start;}
   .row{
     display:flex; justify-content:space-between; align-items:center; gap:12px;
     background:var(--paper-raised); border:1px solid var(--hair); border-radius:10px;
@@ -231,15 +231,21 @@
   .remove-btn{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; border:none; border-radius:8px; padding:6px 10px; background:var(--rust-bg); color:var(--rust); cursor:pointer; white-space:nowrap;}
   .remove-btn:active{transform:scale(0.96);}
 
-  /* ---------- Responsive: adapt to tablet / desktop instead of staying phone-width ---------- */
+  /* ---------- Responsive: fluid from phone to ultra-wide desktop ---------- */
+  /* .list above already reflows its own column count to fit any width via
+     auto-fill, so no fixed-step breakpoints are needed for it -- it grows
+     from 1 column on a phone to as many as fit on a large monitor. */
   @media (min-width: 700px){
-    .app{max-width:820px;}
     section{padding:22px 26px;}
-    .list{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
+    .request-form{max-width:480px;}
   }
-  @media (min-width: 1100px){
-    .app{max-width:1080px;}
-    .list{grid-template-columns:repeat(3, 1fr);}
+  /* Small-phone safety net so the header and title row never crowd/clip on
+     very narrow devices (e.g. older/small phones ~320px). */
+  @media (max-width: 380px){
+    header{padding:16px 14px 14px;}
+    section{padding:14px;}
+    h1{font-size:20px;}
+    .title-row{flex-wrap:wrap;}
   }
 </style>
 </head>
