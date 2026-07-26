@@ -37,7 +37,7 @@
   *{box-sizing:border-box;}
   @media (prefers-reduced-motion: reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
   html,body{margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,sans-serif; -webkit-tap-highlight-color:transparent;}
-  .app{width:100%; max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  .app{width:100%; max-width:1400px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
 
   header{position:sticky; top:0; z-index:10; background:var(--ink); color:var(--paper); padding:18px 18px 14px;}
   .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#8FA3C9; margin:0 0 4px;}
@@ -67,7 +67,7 @@
 
   main{flex:1; padding:14px 14px 40px;}
   #status{text-align:center; padding:40px 20px; color:var(--slate); font-size:14px; line-height:1.6;}
-  .list{display:flex; flex-direction:column; gap:10px;}
+  .list{display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:10px; align-items:start;}
   .card{position:relative; background:var(--paper-raised); border:1px solid var(--hair); border-radius:12px; padding:14px 16px 14px 30px; animation:rise .28s ease backwards;}
   .list .card:nth-child(n){animation-delay:calc(var(--i, 0) * 18ms);}
   @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
@@ -120,18 +120,26 @@
   .remove-btn{background:var(--rust-bg); color:var(--rust); border:none; border-radius:8px; padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap;}
   .remove-btn:active{transform:scale(0.96);}
 
-  /* ---------- Responsive: adapt to tablet / desktop instead of staying phone-width ---------- */
+  /* ---------- Responsive: fluid from phone to ultra-wide desktop ---------- */
+  /* .list above already reflows its own column count to fit any width via
+     auto-fill, so no fixed-step breakpoints are needed for the card grid --
+     it grows from 1 column on a phone to as many as fit on a large monitor. */
   @media (min-width: 640px){
-    .app{max-width:640px;}
     header{padding:22px 26px 16px;}
-    main{padding:18px 4px 48px;}
-    .list{display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;}
+    main{padding:18px 14px 48px;}
     .overlay{align-items:center; padding:24px;}
     .sheet{max-width:440px; border-radius:16px; max-height:85vh; overflow-y:auto;}
   }
-  @media (min-width: 1000px){
-    .app{max-width:900px;}
-    .list{grid-template-columns:repeat(3, 1fr);}
+  /* Small-phone safety net: tighten spacing and let the header wrap instead
+     of clipping on very narrow devices (e.g. older/small phones ~320px). */
+  @media (max-width: 380px){
+    header{padding:14px 12px 12px;}
+    main{padding:10px 8px 32px;}
+    h1{font-size:19px;}
+    .title-row{flex-wrap:wrap; gap:8px;}
+    #authControl{text-align:left;}
+    .search-row{flex-wrap:wrap;}
+    #refreshBtn{padding:9px 14px;}
   }
 </style>
 </head>
