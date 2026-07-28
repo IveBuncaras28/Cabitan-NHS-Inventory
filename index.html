@@ -47,7 +47,7 @@
   h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; margin:0; letter-spacing:-0.01em;}
   #authControl{font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;}
   #authControl button{background:none; border:1px solid #2A3B5C; color:var(--paper); border-radius:99px; padding:5px 11px; cursor:pointer; font-family:inherit; font-size:11px;}
-  #authEmail{display:block; color:#8FA3C9; margin-bottom:4px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .auth-name{display:block; color:#8FA3C9; margin-bottom:4px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 
   .search-row{display:flex; gap:8px;}
   #search{flex:1; font-family:'Inter',sans-serif; font-size:15px; padding:11px 14px; border-radius:10px; border:1px solid #2A3B5C; background:#1F3050; color:var(--paper); outline:none;}
@@ -405,7 +405,7 @@ function goToHub() {
   $('gateEmail').value = ''; $('gatePassword').value = '';
   renderAuthControl();
   showScreen('hub');
-  $('hubWelcome').textContent = `Welcome, ${session.email}`;
+  $('hubWelcome').textContent = `Welcome, ${session.name || deriveNameFromEmail(session.email)}`;
 }
 
 function goToInventory() {
@@ -484,7 +484,8 @@ function renderAuthControl() {
   if (!session) return;
   const manageBtn = session.isAdmin ? `<button class="js-manage-staff" style="margin-top:4px;">Manage Staff</button>` : '';
   const requestsBtn = session.isAdmin ? `<button class="js-view-requests" style="margin-top:4px;">Pending Requests</button>` : '';
-  const html = `<span>${escapeHtml(session.email)}</span><button class="js-sign-out">Sign out</button>${manageBtn}${requestsBtn}`;
+  const displayName = session.name || deriveNameFromEmail(session.email);
+  const html = `<span class="auth-name" title="${escapeHtml(session.email)}">${escapeHtml(displayName)}</span><button class="js-sign-out">Sign out</button>${manageBtn}${requestsBtn}`;
 
   for (const id of ['authControl', 'hubAuthControl']) {
     const el = $(id);
@@ -519,7 +520,11 @@ async function doSignIn() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error_description || data.msg || 'Sign in failed');
 
-    session = { access_token: data.access_token, refresh_token: data.refresh_token, email, isAdmin: data.user?.app_metadata?.is_admin === true };
+    session = {
+      access_token: data.access_token, refresh_token: data.refresh_token, email,
+      isAdmin: data.user?.app_metadata?.is_admin === true,
+      name: displayNameFor(data.user, email),
+    };
     await persistSession();
 
     if (data.user?.user_metadata?.must_change_password === true) {
@@ -619,7 +624,7 @@ async function refreshIfNeeded() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error('expired');
-    session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email, isAdmin: session.isAdmin };
+    session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email, isAdmin: session.isAdmin, name: session.name };
     await persistSession();
     return true;
   } catch (e) {
@@ -982,6 +987,24 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
+}
+
+// Turns "ivy.buncaras@deped.gov.ph" into "Ivy Buncaras". Splits the local
+// part on ., _, - or digits, title-cases each piece, and drops empty
+// fragments (stray numbers, double separators).
+function deriveNameFromEmail(email) {
+  if (!email) return '';
+  const local = email.split('@')[0];
+  const parts = local.split(/[._\-0-9]+/).filter(Boolean);
+  const words = parts.length ? parts : [local];
+  return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+// Prefer a real name if Supabase ever has one set (user_metadata.full_name
+// or .name), otherwise derive one from the email's local part.
+function displayNameFor(user, email) {
+  const stored = user?.user_metadata?.full_name || user?.user_metadata?.name;
+  return (stored && stored.trim()) || deriveNameFromEmail(email);
 }
 
 // ---------- Events ----------
