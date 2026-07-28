@@ -67,11 +67,35 @@ const App = (function () {
     return div.innerHTML;
   }
 
+  // Turns "ivy.buncaras@deped.gov.ph" into "Ivy Buncaras". Splits the
+  // local part on ., _, - or digits, title-cases each piece, and drops
+  // empty fragments (stray numbers, double separators). Falls back to
+  // the raw local part if nothing usable comes out of it.
+  function deriveNameFromEmail(email) {
+    if (!email) return '';
+    const local = email.split('@')[0];
+    const parts = local.split(/[._\-0-9]+/).filter(Boolean);
+    const words = parts.length ? parts : [local];
+    return words
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  // Prefer a real name if Supabase ever has one set (user_metadata.full_name
+  // or .name), otherwise derive one from the email's local part.
+  function displayNameFor(user, email) {
+    const stored = user?.user_metadata?.full_name || user?.user_metadata?.name;
+    return (stored && stored.trim()) || deriveNameFromEmail(email);
+  }
+
   function renderSidebarAuth() {
     const el = $('sidebarAuth');
     if (!el) return;
     if (session) {
-      el.innerHTML = `<span class="who">${escapeHtml(session.email)}</span><button id="signOutBtn">Sign out</button>`;
+      el.innerHTML = `
+        <span class="who-name">Hello, ${escapeHtml(session.name || deriveNameFromEmail(session.email))}</span>
+        <span class="who-email">${escapeHtml(session.email)}</span>
+        <button id="signOutBtn">Sign out</button>`;
       $('signOutBtn').addEventListener('click', clearSession);
     } else {
       el.innerHTML = '';
@@ -125,7 +149,11 @@ const App = (function () {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error_description || data.msg || 'Sign in failed');
 
-      session = { access_token: data.access_token, refresh_token: data.refresh_token, email, isAdmin: data.user?.app_metadata?.is_admin === true };
+      session = {
+        access_token: data.access_token, refresh_token: data.refresh_token, email,
+        isAdmin: data.user?.app_metadata?.is_admin === true,
+        name: displayNameFor(data.user, email),
+      };
       await persistSession();
       $('signinEmail').value = ''; $('signinPassword').value = '';
 
@@ -185,7 +213,7 @@ const App = (function () {
       });
       const data = await res.json();
       if (!res.ok) throw new Error('expired');
-      session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email, isAdmin: session.isAdmin };
+      session = { access_token: data.access_token, refresh_token: data.refresh_token, email: session.email, isAdmin: session.isAdmin, name: session.name };
       await persistSession();
       return true;
     } catch (e) {
