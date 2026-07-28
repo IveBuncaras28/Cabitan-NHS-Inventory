@@ -58,7 +58,8 @@ body[data-page="credit"] .nav-link[data-nav="credit"]{
 }
 
 .sidebar-foot{padding:14px 18px 18px; border-top:1px solid var(--ink-line); font-family:'IBM Plex Mono',monospace; font-size:11px;}
-.sidebar-foot .who{display:block; color:var(--ink-mute); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.sidebar-foot .who-name{display:block; font-family:'Space Grotesk',sans-serif; font-size:13.5px; font-weight:600; color:var(--paper); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.sidebar-foot .who-email{display:block; color:var(--ink-mute); margin:2px 0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .sidebar-foot button{background:none; border:1px solid var(--ink-line); color:var(--paper); border-radius:99px; padding:5px 11px; cursor:pointer; font-family:inherit; font-size:11px;}
 
 .sidebar-backdrop{display:none;}
