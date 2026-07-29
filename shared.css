@@ -1,9 +1,10 @@
 /* =======================================================================
    shared.css — Cabitan NHS Inventory System
    Used by every dashboard-side page (dashboard.html, supplies.html,
-   assets.html, books.html, credit-service.html, and any category added
-   later). Keep this file identical across pages — it's what makes the
-   sidebar/topbar/auth screens look and behave the same everywhere.
+   assets.html, books.html, credit-service.html, teacher-locator.html,
+   service-credit.html, and any category added later). Keep this file
+   identical across pages — it's what makes the sidebar/topbar/auth
+   screens look and behave the same everywhere.
    ======================================================================= */
 :root{
   --ink:#16233D; --paper:#FAF7F0; --paper-raised:#FFFFFF; --slate:#64748B; --hair:#E4DFD3;
@@ -12,6 +13,7 @@
   --rust:#B4402A; --rust-bg:#F8E8E4;
   --blue:#2E5AAC; --blue-bg:#E7EDF9;
   --violet:#6E4FA3; --violet-bg:#EFE9F6;
+  --teal:#1F7A6C; --teal-bg:#E4F2EF;
   --ink-panel:#1F3050; --ink-line:#2A3B5C; --ink-mute:#8FA3C9;
   --sidebar-w:252px;
 }
@@ -53,7 +55,9 @@ body[data-page="dashboard"] .nav-link[data-nav="dashboard"],
 body[data-page="supplies"] .nav-link[data-nav="supplies"],
 body[data-page="assets"] .nav-link[data-nav="assets"],
 body[data-page="books"] .nav-link[data-nav="books"],
-body[data-page="credit"] .nav-link[data-nav="credit"]{
+body[data-page="credit"] .nav-link[data-nav="credit"],
+body[data-page="teacher-locator"] .nav-link[data-nav="teacher-locator"],
+body[data-page="service-credit"] .nav-link[data-nav="service-credit"]{
   background:var(--ink-panel); color:var(--paper); font-weight:600;
 }
 
@@ -123,6 +127,8 @@ footer{text-align:center; padding:16px; font-family:'IBM Plex Mono',monospace; f
 .request-form label:first-child{margin-top:0;}
 .request-form input{width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:10px 12px; border-radius:9px; border:1px solid var(--hair); background:var(--paper); color:var(--ink); outline:none; box-sizing:border-box;}
 .request-form input:focus{border-color:var(--blue);}
+.request-form select{width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:10px 12px; border-radius:9px; border:1px solid var(--hair); background:var(--paper); color:var(--ink); outline:none; box-sizing:border-box;}
+.request-form select:focus{border-color:var(--blue);}
 .request-error{color:var(--rust); font-size:12.5px; margin-top:10px; display:none;}
 .request-success{color:var(--green); font-size:12.5px; margin-top:10px; display:none;}
 #reqSubmit{margin-top:14px; width:100%; padding:11px 0; border:none; border-radius:9px; background:var(--ink); color:var(--paper); font-weight:600; cursor:pointer; font-size:14px;}
@@ -151,6 +157,9 @@ footer{text-align:center; padding:16px; font-family:'IBM Plex Mono',monospace; f
 .quick-card .qc-sub{font-size:12px; color:var(--slate);}
 .quick-card.disabled{opacity:.6; cursor:default;}
 .quick-card.disabled:hover{border-color:var(--hair); transform:none;}
+
+.two-col{display:grid; grid-template-columns:minmax(280px,420px) 1fr; gap:20px; align-items:start;}
+@media (max-width:760px){ .two-col{grid-template-columns:1fr;} }
 
 /* ---------- Coming-soon placeholder ---------- */
 .coming-soon{
