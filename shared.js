@@ -95,7 +95,7 @@ const App = (function () {
       el.innerHTML = `
         <span class="who-name">Hello, ${escapeHtml(session.name || deriveNameFromEmail(session.email))}</span>
         <span class="who-email">${escapeHtml(session.email)}</span>
-        <button id="signOutBtn">Sign out</button>`;
+        <button class="js-sign-out">Sign out</button>`;
       $('signOutBtn').addEventListener('click', clearSession);
     } else {
       el.innerHTML = '';
