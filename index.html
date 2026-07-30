@@ -380,11 +380,21 @@ window.storage = {
   },
 };
 
+// ---------- Default connection (baked into the file) ----------
+// This is the SAME anon/public key you'd otherwise type into "Connection
+// settings" -- it's safe to ship in the page because it's protected by
+// Supabase Row Level Security, not secrecy. Baking it in means ordinary
+// staff never see a setup screen; "Connection settings" is still there
+// (mainly for you as admin) if you ever need to point the app at a
+// different Supabase project.
+const DEFAULT_SUPABASE_URL = 'https://yzsnhoqxbmbuuibillch.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_L7ObwFnG5dI1VhyfTgZmZw_sZSKn8FA'; // your project's anon/public key
+
 const $ = (id) => document.getElementById(id);
 let allItems = [];       // aggregated stock, keyed list
 let session = null;      // { access_token, refresh_token, email }
 let pendingLog = null;   // { item, status }
-let connConfig = { url: '', key: '' }; // Supabase project URL + anon key, shared by gate + inventory settings panels
+let connConfig = { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY }; // Supabase project URL + anon key, shared by gate + inventory settings panels
 
 function supaUrl(){ return (connConfig.url || '').trim().replace(/\/$/, ''); }
 function supaKey(){ return (connConfig.key || '').trim(); }
@@ -419,13 +429,17 @@ function syncConfigInputs() {
 }
 
 async function loadSettings() {
+  // Start from the baked-in default, then let a locally-saved override
+  // (set via "Connection settings") take precedence if one exists --
+  // this is only expected to be used by admins testing another project.
+  connConfig = { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY };
   try {
     const res = await window.storage.get('supabase-config');
     if (res && res.value) {
       const cfg = JSON.parse(res.value);
-      connConfig = { url: cfg.url || '', key: cfg.key || '' };
+      if (cfg.url && cfg.key) connConfig = { url: cfg.url, key: cfg.key };
     }
-  } catch (e) { /* first run, nothing saved yet */ }
+  } catch (e) { /* nothing saved locally, defaults stand */ }
   syncConfigInputs();
 
   try {
@@ -436,7 +450,11 @@ async function loadSettings() {
   if (session) {
     goToHub();
   } else {
-    if (!connConfig.url || !connConfig.key) $('gateSettingsPanel').classList.add('open');
+    // Only force the settings panel open if even the baked-in default is
+    // missing/unfilled -- normal staff should never hit this.
+    if (!connConfig.url || !connConfig.key || connConfig.url.includes('xxxx.supabase.co')) {
+      $('gateSettingsPanel').classList.add('open');
+    }
     showScreen('gate');
   }
 }
