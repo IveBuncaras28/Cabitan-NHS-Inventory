@@ -186,7 +186,7 @@ async function loadMyHistory() {
       </div>
       <div class="right"><span class="qty">+${r.days_granted}</span></div>
     </div>
-  `).join('') : `<div class="empty">No credit grants on file yet.</div>`;
+  `).join('') : App.emptyState("&#128203;", "No credit grants on file yet.");
 }
 
 async function loadMyRequests() {
@@ -204,7 +204,7 @@ async function loadMyRequests() {
         <span class="badge ${badgeCls}">${r.status}</span>
       </div>
     `;
-  }).join('') : `<div class="empty">No leave requests yet.</div>`;
+  }).join('') : App.emptyState("&#128197;", "No leave requests yet.");
 }
 
 async function submitLeave() {
@@ -255,7 +255,7 @@ async function loadRecentGrants() {
       </div>
       <div class="right"><span class="qty">+${r.days_granted}</span></div>
     </div>
-  `).join('') : `<div class="empty">No grants logged yet.</div>`;
+  `).join('') : App.emptyState("&#128176;", "No grants logged yet.");
 }
 
 async function submitGrant() {
@@ -311,7 +311,7 @@ async function loadAdminLeaveQueue() {
         <button class="fulfill-btn" data-id="${r.id}" data-action="Approved">Approve</button>
       </div>
     </div>
-  `).join('') : `<div class="empty">No pending leave requests.</div>`;
+  `).join('') : App.emptyState("&#9989;", "No pending leave requests — all caught up.");
 
   el.querySelectorAll('button[data-action]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -322,8 +322,9 @@ async function loadAdminLeaveQueue() {
           body: JSON.stringify({ status: btn.dataset.action, decided_by: App.session.email, decided_at: new Date().toISOString() }),
         });
         if (!res.ok) throw new Error(`Couldn't update request (${res.status})`);
+        App.toast(`Request ${btn.dataset.action.toLowerCase()}.`, 'success');
         await loadAdminLeaveQueue();
-      } catch (e) { alert(e.message); btn.disabled = false; }
+      } catch (e) { App.toast(e.message, 'error'); btn.disabled = false; }
     });
   });
 }
