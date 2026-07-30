@@ -270,6 +270,93 @@ const App = (function () {
     return { cls: 'ok', label: 'OK' };
   }
 
+  // ---------- Toasts ----------
+  // Non-blocking feedback for actions that used to use alert(). Auto-injects
+  // its container the first time it's needed, so no page markup is required.
+  function ensureToastRoot() {
+    let root = $('toastRoot');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'toastRoot';
+      document.body.appendChild(root);
+    }
+    return root;
+  }
+
+  const TOAST_ICONS = { success: '\u2713', error: '\u2715', info: '\u2139' };
+
+  function toast(message, type = 'info', ms = 4000) {
+    const root = ensureToastRoot();
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span class="t-icon">${TOAST_ICONS[type] || TOAST_ICONS.info}</span><span class="t-msg"></span>`;
+    el.querySelector('.t-msg').textContent = message; // textContent, not innerHTML — message may be untrusted (e.g. server error text)
+    root.appendChild(el);
+    const remove = () => {
+      el.classList.add('leaving');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    };
+    const timer = setTimeout(remove, ms);
+    el.addEventListener('click', () => { clearTimeout(timer); remove(); });
+    return el;
+  }
+
+  // ---------- Confirm dialog ----------
+  // Promise-based replacement for confirm(), styled to match the app instead
+  // of popping a native browser dialog. Usage: if (!await App.confirmDialog('...')) return;
+  function ensureConfirmRoot() {
+    let root = $('confirmRoot');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'confirmRoot';
+      root.innerHTML = `
+        <div class="confirm-card">
+          <h3 id="confirmTitle">Are you sure?</h3>
+          <p id="confirmMsg"></p>
+          <div class="confirm-actions">
+            <button class="confirm-cancel" id="confirmCancelBtn" type="button">Cancel</button>
+            <button class="confirm-ok" id="confirmOkBtn" type="button">Confirm</button>
+          </div>
+        </div>`;
+      document.body.appendChild(root);
+    }
+    return root;
+  }
+
+  function confirmDialog(message, { title = 'Are you sure?', okLabel = 'Confirm', danger = false } = {}) {
+    const root = ensureConfirmRoot();
+    $('confirmTitle').textContent = title;
+    $('confirmMsg').textContent = message;
+    const okBtn = $('confirmOkBtn');
+    const cancelBtn = $('confirmCancelBtn');
+    okBtn.textContent = okLabel;
+    okBtn.className = danger ? 'confirm-ok danger' : 'confirm-ok';
+
+    return new Promise((resolve) => {
+      const cleanup = (result) => {
+        root.classList.remove('open');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        root.removeEventListener('click', onBackdrop);
+        resolve(result);
+      };
+      const onOk = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+      const onBackdrop = (e) => { if (e.target === root) cleanup(false); };
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      root.addEventListener('click', onBackdrop);
+      root.classList.add('open');
+    });
+  }
+
+  // ---------- Empty states ----------
+  // Friendlier than a bare line of text — icon + message, matches the
+  // dashed-border language used elsewhere (e.g. the coming-soon card).
+  function emptyState(icon, message) {
+    return `<div class="empty-state"><div class="es-icon">${icon}</div><div class="es-text">${escapeHtml(message)}</div></div>`;
+  }
+
   // ---------- Sidebar mobile toggle ----------
   function wireSidebarToggle() {
     const sidebar = $('sidebar');
@@ -285,6 +372,8 @@ const App = (function () {
 
   async function init(onReady) {
     onReadyCb = onReady;
+    ensureToastRoot();
+    ensureConfirmRoot();
     wireSidebarToggle();
     if ($('signinSubmit')) $('signinSubmit').addEventListener('click', doSignIn);
     if ($('newPasswordSubmit')) $('newPasswordSubmit').addEventListener('click', doSetNewPassword);
@@ -312,6 +401,9 @@ const App = (function () {
     refreshIfNeeded,
     escapeHtml,
     statusFor,
+    toast,
+    confirmDialog,
+    emptyState,
     $,
   };
 })();
