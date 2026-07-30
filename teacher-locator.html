@@ -254,22 +254,27 @@ async function tlLoadScheduleList() {
         <div class="loc">${r.day_of_week} \u00b7 ${fmtTime(r.start_time)}\u2013${fmtTime(r.end_time)} \u00b7 ${App.escapeHtml(r.room || '')}</div>
       </div>
       <div class="right">
-        <button class="remove-btn" data-id="${r.id}">Remove</button>
+        <button class="remove-btn" data-id="${r.id}" data-name="${App.escapeHtml(r.teacher_name)}">Remove</button>
       </div>
     </div>
-  `).join('') : `<div class="empty">No schedule entries yet.</div>`;
+  `).join('') : App.emptyState('&#128197;', 'No schedule entries yet.');
 
   el.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
+      const ok = await App.confirmDialog(`Remove this schedule entry for ${btn.dataset.name}?`, {
+        title: 'Remove schedule entry?', okLabel: 'Remove', danger: true,
+      });
+      if (!ok) return;
       btn.disabled = true; btn.textContent = 'Removing\u2026';
       try {
         const res = await App.supaFetch(`teacher_schedule?id=eq.${btn.dataset.id}`, {
           method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ deleted: true }),
         });
         if (!res.ok) throw new Error(`Couldn't remove (${res.status})`);
+        App.toast('Schedule entry removed.', 'success');
         await tlLoadScheduleList();
         await tlLoadNames();
-      } catch (e) { alert(e.message); btn.disabled = false; btn.textContent = 'Remove'; }
+      } catch (e) { App.toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Remove'; }
     });
   });
 }
