@@ -134,7 +134,7 @@ async function loadBookCounts() {
           </div>
         `;
       }).join('')
-    : `<div class="empty">No books logged yet.</div>`;
+    : App.emptyState("&#128218;", "No books logged yet.");
 }
 
 async function loadBooksPage() {
