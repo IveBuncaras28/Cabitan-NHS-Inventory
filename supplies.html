@@ -148,7 +148,7 @@ async function loadSuppliesStatus() {
           </div>
         `;
       }).join('')
-    : `<div class="empty">No supplies catalog entries yet.</div>`;
+    : App.emptyState("&#128230;", "No supplies catalog entries yet.");
 }
 
 async function loadItemRequests() {
@@ -174,7 +174,7 @@ async function loadItemRequests() {
           </div>
         `;
       }).join('')
-    : `<div class="empty">No pending requests.</div>`;
+    : App.emptyState("&#9989;", "No pending requests — all caught up.");
 
   el.querySelectorAll('.fulfill-btn').forEach(btn => {
     btn.addEventListener('click', () => fulfillRequest(rows.find(r => r.id === btn.dataset.id), btn));
@@ -222,10 +222,11 @@ async function fulfillRequest(request, btn) {
       throw new Error(body.message || `Request marked Fulfilled, but stock update failed (${stockRes.status})`);
     }
 
+    App.toast(`Marked "${request.item_name}" as fulfilled.`, 'success');
     await loadItemRequests();
     await loadSuppliesStatus();
   } catch (e) {
-    alert(e.message);
+    App.toast(e.message, 'error');
     btn.disabled = false;
     btn.textContent = 'Mark Fulfilled';
   }
@@ -233,7 +234,10 @@ async function fulfillRequest(request, btn) {
 
 async function removeRequest(request, btn) {
   if (!request) return;
-  if (!confirm(`Remove the request for "${request.item_name}"? This does not change stock.`)) return;
+  const ok = await App.confirmDialog(`Remove the request for "${request.item_name}"? This does not change stock.`, {
+    title: 'Remove this request?', okLabel: 'Remove', danger: true,
+  });
+  if (!ok) return;
 
   btn.disabled = true;
   btn.textContent = 'Removing\u2026';
@@ -252,9 +256,10 @@ async function removeRequest(request, btn) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || body.hint || `Couldn't remove request (${res.status})`);
     }
+    App.toast('Request removed.', 'success');
     await loadItemRequests();
   } catch (e) {
-    alert(e.message);
+    App.toast(e.message, 'error');
     btn.disabled = false;
     btn.textContent = 'Remove';
   }
