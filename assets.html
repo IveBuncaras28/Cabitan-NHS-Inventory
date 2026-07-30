@@ -110,7 +110,7 @@ async function loadPifDistribution() {
           <div class="tile-label">${App.escapeHtml(label)}</div>
         </div>
       `).join('')
-    : `<div class="empty">No PIF records yet.</div>`;
+    : App.emptyState("&#127970;", "No PIF records yet.");
 }
 
 async function loadAssetsPage() {
