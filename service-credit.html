@@ -85,7 +85,7 @@
       </section>
 
       <section id="myHistorySection">
-        <h2><span class="dot" style="background:var(--teal);"></span>Credit History</h2>
+        <h2><span class="dot" style="background:var(--teal);"></span>Credit History <span style="font-weight:400; color:var(--slate); font-size:12px;">&middot; latest 6</span></h2>
         <div class="list" id="creditHistoryList"></div>
       </section>
 
@@ -94,12 +94,16 @@
         <div class="request-form">
           <label for="leaveType">Credit type</label>
           <select id="leaveType"><option value="SO">Special Order (SO)</option><option value="LOCAL">Local</option></select>
+          <label for="leaveRef">Reference number to use</label>
+          <select id="leaveRef"><option value="">Loading available credits&hellip;</option></select>
+          <p class="request-error" id="leaveRefEmpty" style="display:none;"></p>
           <label for="leaveStart">Start date</label>
           <input id="leaveStart" type="date" />
           <label for="leaveEnd">End date</label>
           <input id="leaveEnd" type="date" />
           <label for="leaveDays">Total days</label>
-          <input id="leaveDays" type="number" min="0.5" step="0.5" placeholder="e.g. 1.5" />
+          <input id="leaveDays" type="number" min="0.5" step="0.5" placeholder="Pick a reference number first" readonly />
+          <p style="margin:4px 0 0; font-size:11.5px; color:var(--slate);">Locked to the days granted on the reference number you picked above.</p>
           <label for="leaveReason">Reason</label>
           <input id="leaveReason" type="text" placeholder="Optional" />
           <p class="request-error" id="leaveError"></p>
@@ -176,7 +180,7 @@ async function loadMyBalance() {
 
 async function loadMyHistory() {
   const email = App.session.email;
-  const rows = await App.supaGet(`service_credit_grants?select=*&employee_email=eq.${encodeURIComponent(email)}&deleted=eq.false&order=date_granted.desc`);
+  const rows = await App.supaGet(`service_credit_grants?select=*&employee_email=eq.${encodeURIComponent(email)}&deleted=eq.false&order=date_granted.desc&limit=6`);
   const el = document.getElementById('creditHistoryList');
   el.innerHTML = rows.length ? rows.map((r, i) => `
     <div class="row" style="animation-delay:${i * 20}ms">
@@ -189,35 +193,131 @@ async function loadMyHistory() {
   `).join('') : App.emptyState("&#128203;", "No credit grants on file yet.");
 }
 
+let availableRefs = []; // grants for the current type not already claimed by a Pending/Approved leave
+
+async function loadAvailableReferences() {
+  const email = App.session.email;
+  const type = document.getElementById('leaveType').value;
+  const refSelect = document.getElementById('leaveRef');
+  const emptyMsg = document.getElementById('leaveRefEmpty');
+  refSelect.innerHTML = `<option value="">Loading&hellip;</option>`;
+  emptyMsg.style.display = 'none';
+
+  const [grants, claimed] = await Promise.all([
+    App.supaGet(`service_credit_grants?select=*&employee_email=eq.${encodeURIComponent(email)}&credit_type=eq.${type}&deleted=eq.false&order=date_granted.asc`),
+    App.supaGet(`leave_requests?select=grant_id,reference_no&employee_email=eq.${encodeURIComponent(email)}&status=in.(Pending,Approved)`),
+  ]);
+  // Match by grant_id where present, but also fall back to reference_no —
+  // leave requests created before this picker existed never got a
+  // grant_id, so grant_id alone would let an already-used reference
+  // number be picked again.
+  const claimedIds = new Set(claimed.map(c => c.grant_id).filter(Boolean));
+  const claimedRefs = new Set(claimed.map(c => c.reference_no).filter(Boolean));
+  availableRefs = grants.filter(g => !claimedIds.has(g.id) && !claimedRefs.has(g.reference_no));
+
+  if (!availableRefs.length) {
+    refSelect.innerHTML = `<option value="">No available reference numbers</option>`;
+    document.getElementById('leaveDays').value = '';
+    emptyMsg.textContent = `No available ${type === 'SO' ? 'Special Order' : 'Local'} credits to use \u2014 ask an admin to log one, or pick the other type.`;
+    emptyMsg.style.display = 'block';
+    return;
+  }
+
+  refSelect.innerHTML = availableRefs.map(g =>
+    `<option value="${g.id}">${App.escapeHtml(g.reference_no || 'No reference')} \u2014 ${g.days_granted}d \u00b7 granted ${fmtDate(g.date_granted)}</option>`
+  ).join('');
+  document.getElementById('leaveDays').value = availableRefs[0].days_granted;
+}
+
+document.getElementById('leaveType').addEventListener('change', loadAvailableReferences);
+document.getElementById('leaveRef').addEventListener('change', (e) => {
+  const grant = availableRefs.find(g => g.id === e.target.value);
+  document.getElementById('leaveDays').value = grant ? grant.days_granted : '';
+});
+
 async function loadMyRequests() {
   const email = App.session.email;
   const rows = await App.supaGet(`leave_requests?select=*&employee_email=eq.${encodeURIComponent(email)}&order=requested_at.desc`);
   const el = document.getElementById('myRequestsList');
   el.innerHTML = rows.length ? rows.map((r, i) => {
     const badgeCls = r.status === 'Approved' ? 'ok' : r.status === 'Rejected' ? 'critical' : 'low';
+    const refPart = r.reference_no ? ` \u00b7 ${App.escapeHtml(r.reference_no)}` : '';
     return `
       <div class="req-row" style="animation-delay:${i * 20}ms">
         <div>
-          <div class="n">${r.credit_type} \u00b7 ${fmtDate(r.start_date)} \u2013 ${fmtDate(r.end_date)} (${r.total_days}d)</div>
+          <div class="n">${r.credit_type}${refPart} \u00b7 ${fmtDate(r.start_date)} \u2013 ${fmtDate(r.end_date)} (${r.total_days}d)</div>
           <div class="meta">${App.escapeHtml(r.reason || 'No reason given')}</div>
         </div>
-        <span class="badge ${badgeCls}">${r.status}</span>
+        <div class="req-actions">
+          <span class="badge ${badgeCls}">${r.status}</span>
+          ${r.status === 'Approved' ? `<button class="fulfill-btn print-leave-btn" data-id="${r.id}">Print</button>` : ''}
+        </div>
       </div>
     `;
   }).join('') : App.emptyState("&#128197;", "No leave requests yet.");
+
+  el.querySelectorAll('.print-leave-btn').forEach(btn => {
+    btn.addEventListener('click', () => printLeave(rows.find(r => r.id === btn.dataset.id)));
+  });
+}
+
+function printLeave(r) {
+  if (!r) return;
+  const logoSrc = document.querySelector('.brand-logo').src;
+  const win = window.open('', '_blank', 'width=800,height=900');
+  win.document.write(`
+    <!DOCTYPE html><html><head><title>Approved Leave \u2014 ${App.escapeHtml(r.employee_name)}</title>
+    <style>
+      body{font-family:'Georgia',serif; color:#16233D; max-width:680px; margin:40px auto; line-height:1.6;}
+      .hdr{display:flex; align-items:center; gap:14px; border-bottom:2px solid #16233D; padding-bottom:14px; margin-bottom:24px;}
+      .hdr img{width:52px; height:48px; object-fit:cover; border-radius:6px;}
+      .hdr h1{font-size:16px; margin:0;} .hdr p{font-size:12px; color:#64748B; margin:2px 0 0;}
+      h2{font-size:20px; text-align:center; margin:20px 0;}
+      table{width:100%; border-collapse:collapse; margin-top:20px;}
+      td{padding:9px 6px; border-bottom:1px solid #E4DFD3; font-size:14px;}
+      td:first-child{color:#64748B; width:200px;}
+      .status{display:inline-block; padding:4px 12px; border-radius:99px; background:#E8F3EC; color:#2F7A4D; font-weight:bold; font-size:12px;}
+      .sign{margin-top:60px; display:flex; justify-content:space-between;}
+      .sign div{text-align:center; width:220px; border-top:1px solid #16233D; padding-top:6px; font-size:12px; color:#64748B;}
+      @media print{ body{margin:0 20px;} }
+    </style></head><body>
+    <div class="hdr"><img src="${logoSrc}" /><div><h1>Cabitan National High School</h1><p>Approved Leave Record \u2014 Service Credit Monitor</p></div></div>
+    <h2>Notice of Approved Leave</h2>
+    <table>
+      <tr><td>Employee</td><td>${App.escapeHtml(r.employee_name)}</td></tr>
+      <tr><td>Credit type</td><td>${r.credit_type === 'SO' ? 'Special Order (SO)' : 'Local'}</td></tr>
+      <tr><td>Reference number</td><td>${App.escapeHtml(r.reference_no || '\u2014')}</td></tr>
+      <tr><td>Leave dates</td><td>${fmtDate(r.start_date)} \u2013 ${fmtDate(r.end_date)}</td></tr>
+      <tr><td>Total days</td><td>${r.total_days}</td></tr>
+      <tr><td>Reason</td><td>${App.escapeHtml(r.reason || '\u2014')}</td></tr>
+      <tr><td>Status</td><td><span class="status">${r.status}</span></td></tr>
+      <tr><td>Approved by</td><td>${App.escapeHtml(r.decided_by || '\u2014')}</td></tr>
+      <tr><td>Approved on</td><td>${r.decided_at ? new Date(r.decided_at).toLocaleString() : '\u2014'}</td></tr>
+    </table>
+    <div class="sign"><div>Employee Signature</div><div>Authorized Signature</div></div>
+    <script>window.onload = () => window.print();<\/script>
+    </body></html>
+  `);
+  win.document.close();
 }
 
 async function submitLeave() {
   const credit_type = document.getElementById('leaveType').value;
+  const grant_id = document.getElementById('leaveRef').value;
+  const grant = availableRefs.find(g => g.id === grant_id);
   const start_date = document.getElementById('leaveStart').value;
   const end_date = document.getElementById('leaveEnd').value;
-  const total_days = parseFloat(document.getElementById('leaveDays').value);
   const reason = document.getElementById('leaveReason').value.trim() || null;
   document.getElementById('leaveError').style.display = 'none';
   document.getElementById('leaveSuccess').style.display = 'none';
 
-  if (!start_date || !end_date || !total_days) {
-    document.getElementById('leaveError').textContent = 'Start date, end date, and total days are required.';
+  if (!grant) {
+    document.getElementById('leaveError').textContent = 'Pick a reference number to use for this leave.';
+    document.getElementById('leaveError').style.display = 'block';
+    return;
+  }
+  if (!start_date || !end_date) {
+    document.getElementById('leaveError').textContent = 'Start date and end date are required.';
     document.getElementById('leaveError').style.display = 'block';
     return;
   }
@@ -227,7 +327,8 @@ async function submitLeave() {
       method: 'POST', headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
         employee_email: App.session.email, employee_name: App.session.name,
-        credit_type, start_date, end_date, total_days, reason, status: 'Pending',
+        credit_type, grant_id, reference_no: grant.reference_no,
+        start_date, end_date, total_days: grant.days_granted, reason, status: 'Pending',
       }),
     });
     if (!res.ok) {
@@ -236,7 +337,8 @@ async function submitLeave() {
     }
     document.getElementById('leaveSuccess').textContent = 'Leave request submitted.';
     document.getElementById('leaveSuccess').style.display = 'block';
-    ['leaveStart','leaveEnd','leaveDays','leaveReason'].forEach(id => document.getElementById(id).value = '');
+    ['leaveStart','leaveEnd','leaveReason'].forEach(id => document.getElementById(id).value = '');
+    await loadAvailableReferences();
     await loadMyRequests();
   } catch (e) {
     document.getElementById('leaveError').textContent = e.message;
@@ -303,7 +405,7 @@ async function loadAdminLeaveQueue() {
   el.innerHTML = rows.length ? rows.map((r, i) => `
     <div class="req-row" style="animation-delay:${i * 20}ms">
       <div>
-        <div class="n">${App.escapeHtml(r.employee_name)} \u00b7 ${r.credit_type} \u00b7 ${r.total_days}d</div>
+        <div class="n">${App.escapeHtml(r.employee_name)} \u00b7 ${r.credit_type}${r.reference_no ? ' \u00b7 ' + App.escapeHtml(r.reference_no) : ''} \u00b7 ${r.total_days}d</div>
         <div class="meta">${fmtDate(r.start_date)} \u2013 ${fmtDate(r.end_date)} \u2014 ${App.escapeHtml(r.reason || 'No reason given')}</div>
       </div>
       <div class="req-actions">
@@ -337,7 +439,7 @@ async function loadServiceCreditPage() {
   document.getElementById('adminGrantSection').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('adminLeaveSection').style.display = isAdmin ? 'block' : 'none';
 
-  const tasks = [loadMyBalance(), loadMyHistory(), loadMyRequests()];
+  const tasks = [loadMyBalance(), loadMyHistory(), loadMyRequests(), loadAvailableReferences()];
   if (isAdmin) tasks.push(loadRecentGrants(), loadAdminLeaveQueue());
   await Promise.all(tasks);
   document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
