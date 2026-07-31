@@ -9,18 +9,20 @@
 <link rel="stylesheet" href="shared.css">
 <style>
   .locator-search-wrap{position:relative; max-width:520px;}
-  #tlQuery{width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:12px 14px; border-radius:10px; border:1px solid var(--hair); background:var(--paper-raised); outline:none; box-sizing:border-box;}
-  #tlQuery:focus{border-color:var(--teal);}
-  .locator-suggestions{position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--paper-raised); border:1px solid var(--hair); border-radius:10px; box-shadow:0 8px 24px rgba(22,35,61,.08); z-index:5; overflow:hidden; display:none;}
+  #tlQuery{width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:13px 15px; border-radius:11px; border:1px solid var(--hair); background:var(--paper-raised); outline:none; box-sizing:border-box; box-shadow:var(--shadow-xs); transition:border-color .15s ease, box-shadow .15s ease;}
+  #tlQuery:focus{border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-bg);}
+  .locator-suggestions{position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--paper-raised); border:1px solid var(--hair); border-radius:12px; box-shadow:var(--shadow-lg); z-index:5; overflow:hidden; display:none;}
   .locator-suggestions.open{display:block;}
-  .locator-suggestions button{display:block; width:100%; text-align:left; padding:10px 14px; border:none; background:none; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif;}
+  .locator-suggestions button{display:block; width:100%; text-align:left; padding:11px 15px; border:none; background:none; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; transition:background .1s ease;}
   .locator-suggestions button:hover{background:var(--paper);}
-  .locator-search-btn{margin-top:12px; padding:11px 22px; border:none; border-radius:9px; background:var(--ink); color:var(--paper); font-weight:600; cursor:pointer; font-size:14px;}
-  .locator-result{margin-top:20px; max-width:560px; border-radius:14px; padding:20px 22px; border:1px solid var(--hair); background:var(--paper-raised); transition:background .2s, border-color .2s;}
-  .locator-result.status-active{background:var(--green-bg); border-color:#BBF7D0;}
-  .locator-result.status-off{background:var(--rust-bg); border-color:#F6C9BE;}
-  .tl-status-row{display:flex; align-items:center; gap:10px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;}
-  .tl-details{margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .locator-search-btn{margin-top:14px; padding:12px 24px; border:none; border-radius:10px; background:var(--ink); color:var(--paper); font-weight:600; cursor:pointer; font-size:14px; box-shadow:0 4px 14px rgba(22,35,61,.2); transition:background .15s ease, box-shadow .15s ease, transform .1s ease;}
+  .locator-search-btn:hover{background:#1F3050; box-shadow:0 6px 18px rgba(22,35,61,.26);}
+  .locator-search-btn:active{transform:scale(0.98);}
+  .locator-result{margin-top:22px; max-width:560px; border-radius:16px; padding:22px 24px; border:1px solid var(--hair); background:var(--paper-raised); box-shadow:var(--shadow-xs); transition:background .2s, border-color .2s, box-shadow .2s;}
+  .locator-result.status-active{background:var(--green-bg); border-color:#BBF7D0; box-shadow:var(--shadow-sm);}
+  .locator-result.status-off{background:var(--rust-bg); border-color:#F6C9BE; box-shadow:var(--shadow-sm);}
+  .tl-status-row{display:flex; align-items:center; gap:10px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15.5px;}
+  .tl-details{margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   .tl-detail{display:flex; flex-direction:column; gap:2px;}
   .tl-k{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--slate);}
   .tl-v{font-size:14.5px; font-weight:600;}
