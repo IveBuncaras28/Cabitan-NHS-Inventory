@@ -79,7 +79,18 @@
 
       <section id="booksSection">
         <h2><span class="icon" style="background:var(--amber-bg);">&#128218;</span>Books by Grade Level &amp; Condition</h2>
+        <p class="detail-context">Click a grade level (or one of its condition tags) to list titles below.</p>
         <div class="tiles grade-tiles" id="bookTiles"></div>
+      </section>
+
+      <section id="bookDetailSection">
+        <h2><span class="icon" style="background:var(--amber-bg);">&#128214;</span>Book Titles <span id="detailGradeLabel" style="font-weight:400; color:var(--slate); font-size:12px;"></span></h2>
+        <div class="filter-bar" id="detailFilterBar" style="display:none;">
+          <select id="subjectFilter"><option value="">All subjects</option></select>
+          <select id="conditionFilter"><option value="">All conditions</option></select>
+          <button type="button" class="clear-btn" id="clearGradeBtn">Clear selection</button>
+        </div>
+        <div class="list" id="bookDetailList"></div>
       </section>
 
       </div>
@@ -99,8 +110,15 @@ function conditionClass(cond) {
   return 'ok'; // Good, New, etc.
 }
 
-async function loadBookCounts() {
-  const rows = await App.supaGet('book_records?select=grade_level,condition,quantity&deleted=eq.false');
+// All book_records rows currently loaded, kept around so grade/condition
+// clicks and the subject/condition filters can slice them without a
+// fresh network round-trip each time.
+let allBooks = [];
+let selectedGrade = null;
+let selectedSubject = '';
+let selectedCondition = '';
+
+function byGradeSummary(rows) {
   const byGrade = {};
   for (const r of rows) {
     const grade = r.grade_level || 'Ungraded';
@@ -110,20 +128,27 @@ async function loadBookCounts() {
     byGrade[grade].total += qty;
     byGrade[grade].conditions[cond] = (byGrade[grade].conditions[cond] || 0) + qty;
   }
-  const entries = Object.entries(byGrade).sort((a, b) => {
+  return Object.entries(byGrade).sort((a, b) => {
     const numA = parseInt(a[0].replace(/\D/g, ''), 10) || 0;
     const numB = parseInt(b[0].replace(/\D/g, ''), 10) || 0;
     return numA - numB;
   });
+}
+
+function renderGradeTiles() {
+  const entries = byGradeSummary(allBooks);
   const el = document.getElementById('bookTiles');
   el.innerHTML = entries.length
     ? entries.map(([grade, data], i) => {
         const condBadges = Object.entries(data.conditions)
           .sort((a, b) => b[1] - a[1])
-          .map(([cond, count]) => `<span class="badge ${conditionClass(cond)}">${App.escapeHtml(cond)} \u00b7 ${count}</span>`)
+          .map(([cond, count]) => {
+            const isActive = grade === selectedGrade && cond === selectedCondition;
+            return `<button type="button" class="badge ${conditionClass(cond)} badge-btn${isActive ? ' active' : ''}" data-grade="${App.escapeHtml(grade)}" data-cond="${App.escapeHtml(cond)}">${App.escapeHtml(cond)} \u00b7 ${count}</button>`;
+          })
           .join('');
         return `
-          <div class="grade-card" style="animation-delay:${i * 40}ms">
+          <div class="grade-card${grade === selectedGrade ? ' active' : ''}" style="animation-delay:${i * 40}ms" data-grade="${App.escapeHtml(grade)}">
             <div class="grade-card-top">
               <div class="tile-label">${App.escapeHtml(grade)}</div>
               <div class="tile-count">${data.total}</div>
@@ -135,11 +160,132 @@ async function loadBookCounts() {
     : App.emptyState("&#128218;", "No books logged yet.");
 }
 
+// Populates the subject/condition <select> options from whatever books
+// exist within the currently selected grade, so the dropdowns never offer
+// a choice that would filter everything away.
+function populateDetailFilters() {
+  const gradeBooks = allBooks.filter(r => (r.grade_level || 'Ungraded') === selectedGrade);
+  const subjects = [...new Set(gradeBooks.map(r => r.subject || 'Unspecified'))].sort();
+  const conditions = [...new Set(gradeBooks.map(r => r.condition || 'Unspecified'))].sort();
+
+  const subjectSel = document.getElementById('subjectFilter');
+  const condSel = document.getElementById('conditionFilter');
+  subjectSel.innerHTML = '<option value="">All subjects</option>' +
+    subjects.map(s => `<option value="${App.escapeHtml(s)}">${App.escapeHtml(s)}</option>`).join('');
+  condSel.innerHTML = '<option value="">All conditions</option>' +
+    conditions.map(c => `<option value="${App.escapeHtml(c)}">${App.escapeHtml(c)}</option>`).join('');
+  subjectSel.value = selectedSubject;
+  condSel.value = selectedCondition;
+}
+
+function renderBookDetail() {
+  const filterBar = document.getElementById('detailFilterBar');
+  const label = document.getElementById('detailGradeLabel');
+  const listEl = document.getElementById('bookDetailList');
+
+  if (!selectedGrade) {
+    filterBar.style.display = 'none';
+    label.textContent = '';
+    listEl.innerHTML = App.emptyState("&#128214;", "Select a grade level above to see its book titles.");
+    return;
+  }
+
+  filterBar.style.display = 'flex';
+  label.textContent = `\u00b7 ${selectedGrade}`;
+
+  let rows = allBooks.filter(r => (r.grade_level || 'Ungraded') === selectedGrade);
+  if (selectedSubject) rows = rows.filter(r => (r.subject || 'Unspecified') === selectedSubject);
+  if (selectedCondition) rows = rows.filter(r => (r.condition || 'Unspecified') === selectedCondition);
+
+  // Group by title + subject + condition and sum quantity, in case the
+  // same title/condition combo was logged across more than one record.
+  const byTitle = {};
+  for (const r of rows) {
+    const title = r.title || 'Untitled';
+    const subject = r.subject || 'Unspecified';
+    const cond = r.condition || 'Unspecified';
+    const key = `${title}\u0000${subject}\u0000${cond}`;
+    if (!byTitle[key]) byTitle[key] = { title, subject, cond, qty: 0 };
+    byTitle[key].qty += Number(r.quantity || 0);
+  }
+  const titleRows = Object.values(byTitle).sort((a, b) => a.title.localeCompare(b.title));
+
+  listEl.innerHTML = titleRows.length
+    ? titleRows.map((r, i) => `
+        <div class="row" style="animation-delay:${i * 30}ms">
+          <div>
+            <div class="n">${App.escapeHtml(r.title)}</div>
+            <div class="loc">${App.escapeHtml(r.subject)}</div>
+          </div>
+          <div class="right">
+            <span class="badge ${conditionClass(r.cond)}">${App.escapeHtml(r.cond)}</span>
+            <span class="qty">${r.qty}</span>
+          </div>
+        </div>
+      `).join('')
+    : App.emptyState("&#128214;", "No titles match this filter.");
+}
+
+function selectGrade(grade) {
+  selectedGrade = grade;
+  selectedSubject = '';
+  selectedCondition = '';
+  populateDetailFilters();
+  renderGradeTiles();
+  renderBookDetail();
+}
+
+function selectGradeAndCondition(grade, cond) {
+  selectedGrade = grade;
+  selectedCondition = cond;
+  selectedSubject = '';
+  populateDetailFilters();
+  renderGradeTiles();
+  renderBookDetail();
+}
+
+function wireBookDetailControls() {
+  document.getElementById('bookTiles').addEventListener('click', (e) => {
+    const badgeBtn = e.target.closest('.badge-btn');
+    if (badgeBtn) {
+      selectGradeAndCondition(badgeBtn.dataset.grade, badgeBtn.dataset.cond);
+      return;
+    }
+    const card = e.target.closest('.grade-card');
+    if (card) selectGrade(card.dataset.grade);
+  });
+
+  document.getElementById('subjectFilter').addEventListener('change', (e) => {
+    selectedSubject = e.target.value;
+    renderBookDetail();
+  });
+  document.getElementById('conditionFilter').addEventListener('change', (e) => {
+    selectedCondition = e.target.value;
+    renderGradeTiles();
+    renderBookDetail();
+  });
+  document.getElementById('clearGradeBtn').addEventListener('click', () => {
+    selectedGrade = null;
+    selectedSubject = '';
+    selectedCondition = '';
+    renderGradeTiles();
+    renderBookDetail();
+  });
+}
+
+async function loadBookCounts() {
+  allBooks = await App.supaGet('book_records?select=grade_level,subject,title,condition,quantity&deleted=eq.false');
+  if (selectedGrade) populateDetailFilters();
+  renderGradeTiles();
+  renderBookDetail();
+}
+
 async function loadBooksPage() {
   await loadBookCounts();
   document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
 }
 
+wireBookDetailControls();
 App.init(loadBooksPage);
 </script>
 </body>
