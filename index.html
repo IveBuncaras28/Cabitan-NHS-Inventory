@@ -734,8 +734,8 @@ function render(items) {
       </div>
       ${session ? `
         <div class="log-row">
-          <button class="log-btn in" data-name="${escapeHtml(item.name)}" data-status="In">+ Log In</button>
-          <button class="log-btn out" data-name="${escapeHtml(item.name)}" data-status="Out">− Log Out</button>
+          <button class="log-btn in" data-name="${escapeHtml(item.name)}" data-status="In">+ Add In</button>
+          <button class="log-btn out" data-name="${escapeHtml(item.name)}" data-status="Out">− Request</button>
         </div>
       ` : `
         <div class="signin-hint"><a data-signin>Sign in</a> to log a transaction for this item</div>
