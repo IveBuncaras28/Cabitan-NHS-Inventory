@@ -86,9 +86,15 @@
       <section id="bookDetailSection">
         <h2><span class="icon" style="background:var(--amber-bg);">&#128214;</span>Book Titles <span id="detailGradeLabel" style="font-weight:400; color:var(--slate); font-size:12px;"></span></h2>
         <div class="filter-bar" id="detailFilterBar" style="display:none;">
-          <select id="subjectFilter"><option value="">All subjects</option></select>
-          <select id="conditionFilter"><option value="">All conditions</option></select>
-          <button type="button" class="clear-btn" id="clearGradeBtn">Clear selection</button>
+          <div class="select-wrap">
+            <label for="subjectFilter">Subject</label>
+            <select id="subjectFilter"><option value="">All subjects</option></select>
+          </div>
+          <div class="select-wrap">
+            <label for="conditionFilter">Condition</label>
+            <select id="conditionFilter"><option value="">All conditions</option></select>
+          </div>
+          <button type="button" class="clear-btn" id="clearGradeBtn">&#10005; Clear selection</button>
         </div>
         <div class="list" id="bookDetailList"></div>
       </section>
@@ -176,6 +182,8 @@ function populateDetailFilters() {
     conditions.map(c => `<option value="${App.escapeHtml(c)}">${App.escapeHtml(c)}</option>`).join('');
   subjectSel.value = selectedSubject;
   condSel.value = selectedCondition;
+  subjectSel.classList.toggle('active-filter', !!selectedSubject);
+  condSel.classList.toggle('active-filter', !!selectedCondition);
 }
 
 function renderBookDetail() {
@@ -257,10 +265,12 @@ function wireBookDetailControls() {
 
   document.getElementById('subjectFilter').addEventListener('change', (e) => {
     selectedSubject = e.target.value;
+    e.target.classList.toggle('active-filter', !!selectedSubject);
     renderBookDetail();
   });
   document.getElementById('conditionFilter').addEventListener('change', (e) => {
     selectedCondition = e.target.value;
+    e.target.classList.toggle('active-filter', !!selectedCondition);
     renderGradeTiles();
     renderBookDetail();
   });
