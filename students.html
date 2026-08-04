@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Student Profiles — Cabitan NHS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body data-page="students">
+<div class="shell">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="brand-row">
+        <img class="brand-logo" src="data:image/jpeg;base64,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" alt="Cabitan National High School logo" />
+        <div>
+          <div class="brand-name">Cabitan NHS</div>
+          <p class="eyebrow">Utility & Inventory System</p>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-link" data-nav="dashboard"><span class="nav-icon" style="background:var(--blue-bg);">&#128202;</span>Dashboard</a>
+      <p class="nav-group">Inventory</p>
+      <a href="supplies.html" class="nav-link" data-nav="supplies"><span class="nav-icon" style="background:var(--green-bg);">&#128230;</span>Consumable Supplies</a>
+      <a href="assets.html" class="nav-link" data-nav="assets"><span class="nav-icon" style="background:var(--blue-bg);">&#127970;</span>Fixed Assets</a>
+      <a href="books.html" class="nav-link" data-nav="books"><span class="nav-icon" style="background:var(--amber-bg);">&#128218;</span>Books</a>
+      <p class="nav-group">Student Records</p>
+      <a href="students.html" class="nav-link" data-nav="students"><span class="nav-icon" style="background:var(--rust-bg);">&#127891;</span>Student Profiles</a>
+      <p class="nav-group">Personnel Services</p>
+      <a href="teacher-locator.html" class="nav-link" data-nav="teacher-locator"><span class="nav-icon" style="background:var(--teal-bg);">&#128205;</span>Teacher Locator</a>
+      <a href="service-credit.html" class="nav-link" data-nav="service-credit"><span class="nav-icon" style="background:var(--teal-bg);">&#128197;</span>Service Credit Monitor</a>
+      <p class="nav-more">More categories will show up here as they're added.</p>
+    </nav>
+    <div class="sidebar-foot" id="sidebarAuth"></div>
+  </aside>
+
+
+  <div class="main-col">
+    <header class="topbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+        <div>
+          <h1>Student Profiles</h1>
+          <p class="sub">Enrollment status by learner reference number</p>
+        </div>
+      </div>
+      <span id="lastUpdated">Loading&hellip;</span>
+    </header>
+
+    <div id="signinScreen">
+      <div class="auth-card">
+        <h2>Staff Sign In</h2>
+        <p class="sub">Sign in with your school staff account to continue.</p>
+        <label for="signinEmail">Email</label>
+        <input id="signinEmail" type="email" autocomplete="username" />
+        <label for="signinPassword">Password</label>
+        <input id="signinPassword" type="password" autocomplete="current-password" />
+        <p class="request-error" id="signinError"></p>
+        <button id="signinSubmit">Sign In</button>
+      </div>
+    </div>
+
+    <div id="newPasswordScreen" style="display:none;">
+      <div class="auth-card">
+        <h2>Set a New Password</h2>
+        <p class="sub">You're signing in with a temporary password. Choose a new one to continue.</p>
+        <label for="newPassword1">New Password</label>
+        <input id="newPassword1" type="password" autocomplete="new-password" placeholder="At least 8 characters" />
+        <label for="newPassword2">Confirm New Password</label>
+        <input id="newPassword2" type="password" autocomplete="new-password" />
+        <p class="request-error" id="newPasswordError"></p>
+        <button id="newPasswordSubmit">Set Password &amp; Continue</button>
+      </div>
+    </div>
+
+    <main id="appContent">
+      <div class="container">
+        <div id="globalStatus" style="display:none;"></div>
+
+      <section id="studentFormSection">
+        <h2><span class="icon" style="background:var(--rust-bg);">&#127891;</span><span id="formHeading">Add a Student</span></h2>
+        <div class="request-form">
+          <label for="studName">Full name</label>
+          <input id="studName" type="text" placeholder="e.g. Juan Dela Cruz" />
+          <label for="studLRN">LRN No.</label>
+          <input id="studLRN" type="text" inputmode="numeric" placeholder="12-digit Learner Reference Number" />
+          <label for="studYear">Year level</label>
+          <select id="studYear">
+            <option value="">Select year level</option>
+            <option>Grade 7</option>
+            <option>Grade 8</option>
+            <option>Grade 9</option>
+            <option>Grade 10</option>
+            <option>Grade 11</option>
+            <option>Grade 12</option>
+          </select>
+          <label for="studSection">Section</label>
+          <input id="studSection" type="text" placeholder="e.g. Rose" />
+          <label for="studDOFA">Date of first attendance</label>
+          <input id="studDOFA" type="date" />
+          <label for="studStatus">Status</label>
+          <select id="studStatus">
+            <option value="Active">Active</option>
+            <option value="Transferred">Transferred</option>
+            <option value="Dropped">Dropped</option>
+          </select>
+          <div id="lastDayField" style="display:none;">
+            <label for="studLastDay">Last day of attendance</label>
+            <input id="studLastDay" type="date" />
+          </div>
+          <p class="request-error" id="studError"></p>
+          <p class="request-success" id="studSuccess"></p>
+          <button type="button" class="primary-btn" id="studSubmit">Add Student</button>
+          <button type="button" class="secondary-btn" id="studCancelEdit" style="display:none;">Cancel edit</button>
+        </div>
+      </section>
+
+      <section id="studentListSection">
+        <h2><span class="icon" style="background:var(--rust-bg);">&#128203;</span>Student Roster <span id="rosterCount" style="font-weight:400; color:var(--slate); font-size:12px;"></span></h2>
+        <div class="filter-bar">
+          <div class="select-wrap">
+            <label for="yearFilter">Year level</label>
+            <select id="yearFilter"><option value="">All year levels</option></select>
+          </div>
+          <div class="select-wrap">
+            <label for="sectionFilter">Section</label>
+            <select id="sectionFilter"><option value="">All sections</option></select>
+          </div>
+          <div class="select-wrap">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter"><option value="">All statuses</option><option>Active</option><option>Transferred</option><option>Dropped</option></select>
+          </div>
+          <div class="text-wrap">
+            <label for="nameSearch">Search</label>
+            <input id="nameSearch" type="text" placeholder="Name or LRN&hellip;" />
+          </div>
+        </div>
+        <div class="list" id="studentList"></div>
+      </section>
+
+      </div>
+    </main>
+
+    <footer>STAFF SIGN-IN REQUIRED &middot; REFRESHES EVERY 30 SECONDS</footer>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+
+<script>
+let allStudents = [];
+let editingId = null;
+
+function statusClass(status) {
+  if (status === 'Active') return 'ok';
+  if (status === 'Transferred') return 'low';
+  return 'critical'; // Dropped
+}
+
+function toggleLastDayField() {
+  const status = document.getElementById('studStatus').value;
+  const field = document.getElementById('lastDayField');
+  const input = document.getElementById('studLastDay');
+  const show = status !== 'Active';
+  field.style.display = show ? 'block' : 'none';
+  if (!show) input.value = '';
+}
+document.getElementById('studStatus').addEventListener('change', toggleLastDayField);
+
+function resetForm() {
+  editingId = null;
+  document.getElementById('formHeading').textContent = 'Add a Student';
+  document.getElementById('studSubmit').textContent = 'Add Student';
+  document.getElementById('studCancelEdit').style.display = 'none';
+  ['studName','studLRN','studSection','studDOFA','studLastDay'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('studYear').value = '';
+  document.getElementById('studStatus').value = 'Active';
+  toggleLastDayField();
+  document.getElementById('studError').style.display = 'none';
+}
+
+function startEdit(s) {
+  editingId = s.id;
+  document.getElementById('formHeading').textContent = `Editing ${s.full_name}`;
+  document.getElementById('studSubmit').textContent = 'Save Changes';
+  document.getElementById('studCancelEdit').style.display = 'block';
+  document.getElementById('studName').value = s.full_name || '';
+  document.getElementById('studLRN').value = s.lrn || '';
+  document.getElementById('studYear').value = s.year_level || '';
+  document.getElementById('studSection').value = s.section || '';
+  document.getElementById('studDOFA').value = s.date_first_attendance || '';
+  document.getElementById('studStatus').value = s.status || 'Active';
+  document.getElementById('studLastDay').value = s.last_day_attendance || '';
+  toggleLastDayField();
+  document.getElementById('studError').style.display = 'none';
+  document.getElementById('studentFormSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('studCancelEdit').addEventListener('click', resetForm);
+
+async function submitStudent() {
+  const errEl = document.getElementById('studError');
+  const okEl = document.getElementById('studSuccess');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+
+  const full_name = document.getElementById('studName').value.trim();
+  const lrn = document.getElementById('studLRN').value.trim();
+  const year_level = document.getElementById('studYear').value;
+  const section = document.getElementById('studSection').value.trim();
+  const date_first_attendance = document.getElementById('studDOFA').value || null;
+  const status = document.getElementById('studStatus').value;
+  const last_day_attendance = status !== 'Active' ? (document.getElementById('studLastDay').value || null) : null;
+
+  if (!full_name || !lrn || !year_level || !section) {
+    errEl.textContent = 'Name, LRN, year level, and section are all required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (status !== 'Active' && !last_day_attendance) {
+    errEl.textContent = `Please provide the last day of attendance for a ${status.toLowerCase()} student.`;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const payload = { full_name, lrn, year_level, section, date_first_attendance, status, last_day_attendance };
+  const btn = document.getElementById('studSubmit');
+  btn.disabled = true;
+  btn.textContent = editingId ? 'Saving\u2026' : 'Adding\u2026';
+
+  try {
+    const res = editingId
+      ? await App.supaFetch(`student_records?id=eq.${editingId}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(payload),
+        })
+      : await App.supaFetch('student_records', {
+          method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...payload, deleted: false }),
+        });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || body.hint || `Couldn't save this student (${res.status})`);
+    }
+    App.toast(editingId ? 'Student profile updated.' : `Added ${full_name}.`, 'success');
+    resetForm();
+    await loadStudents();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Save Changes' : 'Add Student';
+  }
+}
+document.getElementById('studSubmit').addEventListener('click', submitStudent);
+
+async function removeStudent(s, btn) {
+  const ok = await App.confirmDialog(`Remove ${s.full_name}'s profile? This can't be undone from here.`, {
+    title: 'Remove this student?', okLabel: 'Remove', danger: true,
+  });
+  if (!ok) return;
+  btn.disabled = true;
+  btn.textContent = 'Removing\u2026';
+  try {
+    const res = await App.supaFetch(`student_records?id=eq.${s.id}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ deleted: true }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || body.hint || `Couldn't remove this student (${res.status})`);
+    }
+    App.toast('Student removed.', 'success');
+    if (editingId === s.id) resetForm();
+    await loadStudents();
+  } catch (e) {
+    App.toast(e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Remove';
+  }
+}
+
+function populateRosterFilters() {
+  const years = [...new Set(allStudents.map(s => s.year_level).filter(Boolean))].sort();
+  const sections = [...new Set(allStudents.map(s => s.section).filter(Boolean))].sort();
+  const yearSel = document.getElementById('yearFilter');
+  const sectionSel = document.getElementById('sectionFilter');
+  const curYear = yearSel.value, curSection = sectionSel.value;
+  yearSel.innerHTML = '<option value="">All year levels</option>' + years.map(y => `<option value="${App.escapeHtml(y)}">${App.escapeHtml(y)}</option>`).join('');
+  sectionSel.innerHTML = '<option value="">All sections</option>' + sections.map(s => `<option value="${App.escapeHtml(s)}">${App.escapeHtml(s)}</option>`).join('');
+  yearSel.value = curYear;
+  sectionSel.value = curSection;
+}
+
+function renderStudentList() {
+  const yearVal = document.getElementById('yearFilter').value;
+  const sectionVal = document.getElementById('sectionFilter').value;
+  const statusVal = document.getElementById('statusFilter').value;
+  const search = document.getElementById('nameSearch').value.trim().toLowerCase();
+
+  document.getElementById('yearFilter').classList.toggle('active-filter', !!yearVal);
+  document.getElementById('sectionFilter').classList.toggle('active-filter', !!sectionVal);
+  document.getElementById('statusFilter').classList.toggle('active-filter', !!statusVal);
+
+  let rows = allStudents;
+  if (yearVal) rows = rows.filter(s => s.year_level === yearVal);
+  if (sectionVal) rows = rows.filter(s => s.section === sectionVal);
+  if (statusVal) rows = rows.filter(s => s.status === statusVal);
+  if (search) rows = rows.filter(s => (s.full_name || '').toLowerCase().includes(search) || (s.lrn || '').toLowerCase().includes(search));
+  rows = [...rows].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+  document.getElementById('rosterCount').textContent = `\u00b7 ${rows.length} of ${allStudents.length}`;
+
+  const el = document.getElementById('studentList');
+  el.innerHTML = rows.length
+    ? rows.map((s, i) => {
+        const dateLabel = s.status === 'Active'
+          ? (s.date_first_attendance ? `Since ${s.date_first_attendance}` : 'First attendance not set')
+          : (s.last_day_attendance ? `Left ${s.last_day_attendance}` : 'Last day not set');
+        return `
+          <div class="req-row" style="animation-delay:${i * 25}ms">
+            <div>
+              <div class="n">${App.escapeHtml(s.full_name)}</div>
+              <div class="meta">LRN ${App.escapeHtml(s.lrn || '\u2014')} \u00b7 ${App.escapeHtml(s.year_level || '\u2014')} - ${App.escapeHtml(s.section || '\u2014')}</div>
+            </div>
+            <div class="req-actions">
+              <span class="badge ${statusClass(s.status)}">${App.escapeHtml(s.status)}</span>
+              <div class="date">${App.escapeHtml(dateLabel)}</div>
+              <button class="edit-btn" data-id="${s.id}">Edit</button>
+              <button class="remove-btn" data-id="${s.id}">Remove</button>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : App.emptyState("&#127891;", "No students match this filter.");
+
+  el.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => startEdit(rows.find(r => r.id === btn.dataset.id)));
+  });
+  el.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => removeStudent(rows.find(r => r.id === btn.dataset.id), btn));
+  });
+}
+
+['yearFilter','sectionFilter','statusFilter'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderStudentList);
+});
+document.getElementById('nameSearch').addEventListener('input', renderStudentList);
+
+async function loadStudents() {
+  allStudents = await App.supaGet('student_records?select=id,full_name,lrn,year_level,section,status,date_first_attendance,last_day_attendance&deleted=eq.false');
+  populateRosterFilters();
+  renderStudentList();
+}
+
+async function loadStudentsPage() {
+  await loadStudents();
+  document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+App.init(loadStudentsPage);
+</script>
+</body>
+</html>
