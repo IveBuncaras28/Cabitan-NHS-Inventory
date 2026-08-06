@@ -32,6 +32,7 @@
       <p class="nav-group">Personnel Services</p>
       <a href="teacher-locator.html" class="nav-link" data-nav="teacher-locator"><span class="nav-icon" style="background:var(--teal-bg);">&#128205;</span>Teacher Locator</a>
       <a href="service-credit.html" class="nav-link" data-nav="service-credit"><span class="nav-icon" style="background:var(--teal-bg);">&#128197;</span>Service Credit Monitor</a>
+      <a href="downloads.html" class="nav-link" data-nav="downloads"><span class="nav-icon" style="background:var(--teal-bg);">&#128229;</span>Downloads</a>
       <p class="nav-more">More categories will show up here as they're added.</p>
     </nav>
     <div class="sidebar-foot" id="sidebarAuth"></div>
@@ -80,7 +81,53 @@
       <div class="container">
         <div id="globalStatus" style="display:none;"></div>
 
-      <section id="studentFormSection">
+      <section id="studentStatsSection">
+        <h2><span class="icon" style="background:var(--rust-bg);">&#127891;</span>Student Profiles</h2>
+        <div class="stat-cards" id="statCards">
+          <div class="stat-card blue">
+            <div><div class="stat-label">Total Students</div><div class="stat-value" id="statTotal">&mdash;</div></div>
+            <div class="stat-icon">&#128101;</div>
+          </div>
+          <div class="stat-card green">
+            <div><div class="stat-label">Active</div><div class="stat-value" id="statActive">&mdash;</div></div>
+            <div class="stat-icon">&#9989;</div>
+          </div>
+          <div class="stat-card amber">
+            <div><div class="stat-label">Transferred</div><div class="stat-value" id="statTransferred">&mdash;</div></div>
+            <div class="stat-icon">&#128257;</div>
+          </div>
+          <div class="stat-card rust">
+            <div><div class="stat-label">Dropped</div><div class="stat-value" id="statDropped">&mdash;</div></div>
+            <div class="stat-icon">&#128683;</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="studentToolbarSection">
+        <div class="toolbar-row">
+          <div class="filter-bar">
+            <div class="select-wrap">
+              <label for="yearFilter">Year level</label>
+              <select id="yearFilter"><option value="">All</option></select>
+            </div>
+            <div class="select-wrap">
+              <label for="sectionFilter">Section</label>
+              <select id="sectionFilter"><option value="">All</option></select>
+            </div>
+            <div class="select-wrap">
+              <label for="statusFilter">Status</label>
+              <select id="statusFilter"><option value="">All</option><option>Active</option><option>Transferred</option><option>Dropped</option></select>
+            </div>
+            <button type="button" class="btn-reset" id="filterResetBtn">&#8635; Reset</button>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" class="btn-export" id="exportCsvBtn">&#128190; Export CSV</button>
+            <button type="button" class="btn-add" id="addStudentToggle">+ Add Student</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="studentFormSection" style="display:none;">
         <h2><span class="icon" style="background:var(--rust-bg);">&#127891;</span><span id="formHeading">Add a Student</span></h2>
         <div class="request-form">
           <label for="studName">Full name</label>
@@ -114,31 +161,28 @@
           <p class="request-error" id="studError"></p>
           <p class="request-success" id="studSuccess"></p>
           <button type="button" class="primary-btn" id="studSubmit">Add Student</button>
-          <button type="button" class="secondary-btn" id="studCancelEdit" style="display:none;">Cancel edit</button>
+          <button type="button" class="secondary-btn" id="studCancelEdit">Cancel</button>
         </div>
       </section>
 
       <section id="studentListSection">
-        <h2><span class="icon" style="background:var(--rust-bg);">&#128203;</span>Student Roster <span id="rosterCount" style="font-weight:400; color:var(--slate); font-size:12px;"></span></h2>
-        <div class="filter-bar">
-          <div class="select-wrap">
-            <label for="yearFilter">Year level</label>
-            <select id="yearFilter"><option value="">All year levels</option></select>
+        <div class="dt-header">
+          <h2 style="margin:0;"><span class="icon" style="background:var(--rust-bg);">&#128203;</span>Student List</h2>
+          <span class="dt-count-pill" id="rosterCount">0 records</span>
+        </div>
+        <div class="dt-toolbar">
+          <div class="entries-select">
+            Show <select id="pageSizeSelect"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries
           </div>
-          <div class="select-wrap">
-            <label for="sectionFilter">Section</label>
-            <select id="sectionFilter"><option value="">All sections</option></select>
-          </div>
-          <div class="select-wrap">
-            <label for="statusFilter">Status</label>
-            <select id="statusFilter"><option value="">All statuses</option><option>Active</option><option>Transferred</option><option>Dropped</option></select>
-          </div>
-          <div class="text-wrap">
-            <label for="nameSearch">Search</label>
-            <input id="nameSearch" type="text" placeholder="Name or LRN&hellip;" />
+          <div class="search-box">
+            Search: <input id="studentSearch" type="text" placeholder="Name or LRN&hellip;" />
           </div>
         </div>
-        <div class="list" id="studentList"></div>
+        <div class="dt-table-wrap" id="studentTableWrap"></div>
+        <div class="dt-footer">
+          <span id="paginationInfo"></span>
+          <div class="dt-pagination" id="paginationControls"></div>
+        </div>
       </section>
 
       </div>
@@ -153,6 +197,9 @@
 <script>
 let allStudents = [];
 let editingId = null;
+let sortKey = 'full_name';
+let sortDir = 'asc';
+let currentPage = 1;
 
 function statusClass(status) {
   if (status === 'Active') return 'ok';
@@ -170,11 +217,13 @@ function toggleLastDayField() {
 }
 document.getElementById('studStatus').addEventListener('change', toggleLastDayField);
 
+function showForm() { document.getElementById('studentFormSection').style.display = 'block'; }
+function hideForm() { document.getElementById('studentFormSection').style.display = 'none'; }
+
 function resetForm() {
   editingId = null;
   document.getElementById('formHeading').textContent = 'Add a Student';
   document.getElementById('studSubmit').textContent = 'Add Student';
-  document.getElementById('studCancelEdit').style.display = 'none';
   ['studName','studLRN','studSection','studDOFA','studLastDay'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('studYear').value = '';
   document.getElementById('studStatus').value = 'Active';
@@ -186,7 +235,6 @@ function startEdit(s) {
   editingId = s.id;
   document.getElementById('formHeading').textContent = `Editing ${s.full_name}`;
   document.getElementById('studSubmit').textContent = 'Save Changes';
-  document.getElementById('studCancelEdit').style.display = 'block';
   document.getElementById('studName').value = s.full_name || '';
   document.getElementById('studLRN').value = s.lrn || '';
   document.getElementById('studYear').value = s.year_level || '';
@@ -196,10 +244,22 @@ function startEdit(s) {
   document.getElementById('studLastDay').value = s.last_day_attendance || '';
   toggleLastDayField();
   document.getElementById('studError').style.display = 'none';
+  showForm();
   document.getElementById('studentFormSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-document.getElementById('studCancelEdit').addEventListener('click', resetForm);
+document.getElementById('studCancelEdit').addEventListener('click', () => { resetForm(); hideForm(); });
+document.getElementById('addStudentToggle').addEventListener('click', () => {
+  const section = document.getElementById('studentFormSection');
+  const isHidden = section.style.display === 'none';
+  if (isHidden) {
+    resetForm();
+    showForm();
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    hideForm();
+  }
+});
 
 async function submitStudent() {
   const errEl = document.getElementById('studError');
@@ -245,6 +305,7 @@ async function submitStudent() {
     }
     App.toast(editingId ? 'Student profile updated.' : `Added ${full_name}.`, 'success');
     resetForm();
+    hideForm();
     await loadStudents();
   } catch (e) {
     errEl.textContent = e.message;
@@ -272,7 +333,7 @@ async function removeStudent(s, btn) {
       throw new Error(body.message || body.hint || `Couldn't remove this student (${res.status})`);
     }
     App.toast('Student removed.', 'success');
-    if (editingId === s.id) resetForm();
+    if (editingId === s.id) { resetForm(); hideForm(); }
     await loadStudents();
   } catch (e) {
     App.toast(e.message, 'error');
@@ -287,17 +348,24 @@ function populateRosterFilters() {
   const yearSel = document.getElementById('yearFilter');
   const sectionSel = document.getElementById('sectionFilter');
   const curYear = yearSel.value, curSection = sectionSel.value;
-  yearSel.innerHTML = '<option value="">All year levels</option>' + years.map(y => `<option value="${App.escapeHtml(y)}">${App.escapeHtml(y)}</option>`).join('');
-  sectionSel.innerHTML = '<option value="">All sections</option>' + sections.map(s => `<option value="${App.escapeHtml(s)}">${App.escapeHtml(s)}</option>`).join('');
+  yearSel.innerHTML = '<option value="">All</option>' + years.map(y => `<option value="${App.escapeHtml(y)}">${App.escapeHtml(y)}</option>`).join('');
+  sectionSel.innerHTML = '<option value="">All</option>' + sections.map(s => `<option value="${App.escapeHtml(s)}">${App.escapeHtml(s)}</option>`).join('');
   yearSel.value = curYear;
   sectionSel.value = curSection;
 }
 
-function renderStudentList() {
+function renderStatCards() {
+  document.getElementById('statTotal').textContent = allStudents.length;
+  document.getElementById('statActive').textContent = allStudents.filter(s => s.status === 'Active').length;
+  document.getElementById('statTransferred').textContent = allStudents.filter(s => s.status === 'Transferred').length;
+  document.getElementById('statDropped').textContent = allStudents.filter(s => s.status === 'Dropped').length;
+}
+
+function getFilteredSortedStudents() {
   const yearVal = document.getElementById('yearFilter').value;
   const sectionVal = document.getElementById('sectionFilter').value;
   const statusVal = document.getElementById('statusFilter').value;
-  const search = document.getElementById('nameSearch').value.trim().toLowerCase();
+  const search = document.getElementById('studentSearch').value.trim().toLowerCase();
 
   document.getElementById('yearFilter').classList.toggle('active-filter', !!yearVal);
   document.getElementById('sectionFilter').classList.toggle('active-filter', !!sectionVal);
@@ -308,49 +376,178 @@ function renderStudentList() {
   if (sectionVal) rows = rows.filter(s => s.section === sectionVal);
   if (statusVal) rows = rows.filter(s => s.status === statusVal);
   if (search) rows = rows.filter(s => (s.full_name || '').toLowerCase().includes(search) || (s.lrn || '').toLowerCase().includes(search));
-  rows = [...rows].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
-  document.getElementById('rosterCount').textContent = `\u00b7 ${rows.length} of ${allStudents.length}`;
-
-  const el = document.getElementById('studentList');
-  el.innerHTML = rows.length
-    ? rows.map((s, i) => {
-        const dateLabel = s.status === 'Active'
-          ? (s.date_first_attendance ? `Since ${s.date_first_attendance}` : 'First attendance not set')
-          : (s.last_day_attendance ? `Left ${s.last_day_attendance}` : 'Last day not set');
-        return `
-          <div class="req-row" style="animation-delay:${i * 25}ms">
-            <div>
-              <div class="n">${App.escapeHtml(s.full_name)}</div>
-              <div class="meta">LRN ${App.escapeHtml(s.lrn || '\u2014')} \u00b7 ${App.escapeHtml(s.year_level || '\u2014')} - ${App.escapeHtml(s.section || '\u2014')}</div>
-            </div>
-            <div class="req-actions">
-              <span class="badge ${statusClass(s.status)}">${App.escapeHtml(s.status)}</span>
-              <div class="date">${App.escapeHtml(dateLabel)}</div>
-              <button class="edit-btn" data-id="${s.id}">Edit</button>
-              <button class="remove-btn" data-id="${s.id}">Remove</button>
-            </div>
-          </div>
-        `;
-      }).join('')
-    : App.emptyState("&#127891;", "No students match this filter.");
-
-  el.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => startEdit(rows.find(r => r.id === btn.dataset.id)));
+  rows = [...rows].sort((a, b) => {
+    const av = (a[sortKey] || '').toString().toLowerCase();
+    const bv = (b[sortKey] || '').toString().toLowerCase();
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
   });
-  el.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', () => removeStudent(rows.find(r => r.id === btn.dataset.id), btn));
+  return rows;
+}
+
+const SORT_COLUMNS = [
+  { key: 'lrn', label: 'LRN No.' },
+  { key: 'full_name', label: 'Name' },
+  { key: 'year_level', label: 'Year Level' },
+  { key: 'section', label: 'Section' },
+  { key: 'status', label: 'Status' },
+];
+
+function sortArrowHtml(key) {
+  const isActive = sortKey === key;
+  return `<span class="sort-arrows">
+    <span class="up">${isActive && sortDir === 'asc' ? '&#9650;' : '&#9651;'}</span>
+    <span class="down">${isActive && sortDir === 'desc' ? '&#9660;' : '&#9661;'}</span>
+  </span>`;
+}
+
+function renderStudentList() {
+  const rows = getFilteredSortedStudents();
+  document.getElementById('rosterCount').textContent = `${rows.length} record${rows.length === 1 ? '' : 's'}`;
+
+  const pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10);
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * pageSize;
+  const pageRows = rows.slice(start, start + pageSize);
+
+  const el = document.getElementById('studentTableWrap');
+  if (!rows.length) {
+    el.innerHTML = App.emptyState("&#127891;", "No students match this filter.");
+  } else {
+    el.innerHTML = `
+      <table class="dl-table dt-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            ${SORT_COLUMNS.map(c => `<th class="sortable${sortKey === c.key ? ' sort-' + sortDir : ''}" data-key="${c.key}">${c.label}${sortArrowHtml(c.key)}</th>`).join('')}
+            <th>First Attendance</th>
+            <th>Last Day</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pageRows.map((s, i) => `
+            <tr>
+              <td>${start + i + 1}</td>
+              <td>${App.escapeHtml(s.lrn || '\u2014')}</td>
+              <td>${App.escapeHtml(s.full_name)}</td>
+              <td>${App.escapeHtml(s.year_level || '\u2014')}</td>
+              <td>${App.escapeHtml(s.section || '\u2014')}</td>
+              <td><span class="badge ${statusClass(s.status)}">${App.escapeHtml(s.status)}</span></td>
+              <td>${App.escapeHtml(s.date_first_attendance || '\u2014')}</td>
+              <td>${App.escapeHtml(s.status !== 'Active' ? (s.last_day_attendance || '\u2014') : '\u2014')}</td>
+              <td>
+                <div class="action-btns">
+                  <button type="button" class="action-btn edit" data-id="${s.id}">&#9998; Edit</button>
+                  <button type="button" class="action-btn delete" data-id="${s.id}">&#128465; Remove</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    el.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.key;
+        if (sortKey === key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+        else { sortKey = key; sortDir = 'asc'; }
+        renderStudentList();
+      });
+    });
+    el.querySelectorAll('.action-btn.edit').forEach(btn => {
+      btn.addEventListener('click', () => startEdit(rows.find(r => r.id === btn.dataset.id)));
+    });
+    el.querySelectorAll('.action-btn.delete').forEach(btn => {
+      btn.addEventListener('click', () => removeStudent(rows.find(r => r.id === btn.dataset.id), btn));
+    });
+  }
+
+  renderPagination(rows.length, pageSize, totalPages);
+}
+
+function renderPagination(totalRows, pageSize, totalPages) {
+  const infoEl = document.getElementById('paginationInfo');
+  const ctrlEl = document.getElementById('paginationControls');
+  if (!totalRows) {
+    infoEl.textContent = 'No entries to show';
+    ctrlEl.innerHTML = '';
+    return;
+  }
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalRows);
+  infoEl.textContent = `Showing ${start} to ${end} of ${totalRows} entries`;
+
+  let buttons = `<button type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>&laquo; Prev</button>`;
+  for (let p = 1; p <= totalPages; p++) {
+    if (totalPages > 7 && Math.abs(p - currentPage) > 2 && p !== 1 && p !== totalPages) {
+      if (p === 2 || p === totalPages - 1) buttons += `<span style="padding:6px 4px; color:var(--slate);">&hellip;</span>`;
+      continue;
+    }
+    buttons += `<button type="button" data-page="${p}" class="${p === currentPage ? 'active' : ''}">${p}</button>`;
+  }
+  buttons += `<button type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Next &raquo;</button>`;
+  ctrlEl.innerHTML = buttons;
+  ctrlEl.querySelectorAll('button[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = parseInt(btn.dataset.page, 10);
+      if (p < 1 || p > totalPages) return;
+      currentPage = p;
+      renderStudentList();
+    });
   });
 }
 
 ['yearFilter','sectionFilter','statusFilter'].forEach(id => {
-  document.getElementById(id).addEventListener('change', renderStudentList);
+  document.getElementById(id).addEventListener('change', () => { currentPage = 1; renderStudentList(); });
 });
-document.getElementById('nameSearch').addEventListener('input', renderStudentList);
+document.getElementById('studentSearch').addEventListener('input', () => { currentPage = 1; renderStudentList(); });
+document.getElementById('pageSizeSelect').addEventListener('change', () => { currentPage = 1; renderStudentList(); });
+
+document.getElementById('filterResetBtn').addEventListener('click', () => {
+  document.getElementById('yearFilter').value = '';
+  document.getElementById('sectionFilter').value = '';
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('studentSearch').value = '';
+  currentPage = 1;
+  renderStudentList();
+});
+
+function csvEscape(val) {
+  const s = (val ?? '').toString();
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const rows = getFilteredSortedStudents();
+  const header = ['LRN No.', 'Name', 'Year Level', 'Section', 'Status', 'First Attendance', 'Last Day'];
+  const lines = [header.join(',')];
+  rows.forEach(s => {
+    lines.push([
+      csvEscape(s.lrn), csvEscape(s.full_name), csvEscape(s.year_level), csvEscape(s.section),
+      csvEscape(s.status), csvEscape(s.date_first_attendance),
+      csvEscape(s.status !== 'Active' ? s.last_day_attendance : ''),
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `student-profiles-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  App.toast(`Exported ${rows.length} student${rows.length === 1 ? '' : 's'}.`, 'success');
+});
 
 async function loadStudents() {
   allStudents = await App.supaGet('student_records?select=id,full_name,lrn,year_level,section,status,date_first_attendance,last_day_attendance&deleted=eq.false');
   populateRosterFilters();
+  renderStatCards();
   renderStudentList();
 }
 
