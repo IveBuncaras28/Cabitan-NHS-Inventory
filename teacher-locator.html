@@ -52,6 +52,7 @@
       <p class="nav-group">Personnel Services</p>
       <a href="teacher-locator.html" class="nav-link" data-nav="teacher-locator"><span class="nav-icon" style="background:var(--teal-bg);">&#128205;</span>Teacher Locator</a>
       <a href="service-credit.html" class="nav-link" data-nav="service-credit"><span class="nav-icon" style="background:var(--teal-bg);">&#128197;</span>Service Credit Monitor</a>
+      <a href="downloads.html" class="nav-link" data-nav="downloads"><span class="nav-icon" style="background:var(--teal-bg);">&#128229;</span>Downloads</a>
       <p class="nav-more">More categories will show up here as they're added.</p>
     </nav>
     <div class="sidebar-foot" id="sidebarAuth"></div>
@@ -123,8 +124,9 @@
 
       <section id="tlAdminSection" style="display:none; margin-top:32px;">
         <h2><span class="icon" style="background:var(--rust-bg);">&#128197;</span>Manage Schedule (Admin)</h2>
+        <button type="button" class="section-toggle-btn" id="tlAddFormToggle">+ Add Schedule Entry</button>
         <div class="two-col">
-          <div class="request-form">
+          <div class="request-form" id="tlAddFormPanel" style="display:none;">
             <label for="tlNewName">Teacher name</label>
             <input id="tlNewName" type="text" placeholder="e.g. Juan Dela Cruz" />
             <label for="tlNewDay">Day</label>
@@ -307,9 +309,11 @@ async function tlAddSchedule() {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || `Couldn't add entry (${res.status})`);
     }
-    document.getElementById('tlAdminSuccess').textContent = 'Schedule entry added.';
-    document.getElementById('tlAdminSuccess').style.display = 'block';
+    document.getElementById('tlAdminSuccess').style.display = 'none';
+    App.toast('Schedule entry added.', 'success');
     ['tlNewName','tlNewRoom','tlNewSubject','tlNewSection','tlNewStart','tlNewEnd'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('tlAddFormPanel').style.display = 'none';
+    document.getElementById('tlAddFormToggle').textContent = '+ Add Schedule Entry';
     await tlLoadScheduleList();
     await tlLoadNames();
   } catch (e) {
@@ -322,6 +326,13 @@ document.getElementById('tlSearchBtn').addEventListener('click', tlSearch);
 document.getElementById('tlQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') tlSearch(); });
 document.getElementById('tlQuery').addEventListener('input', (e) => tlShowSuggestions(e.target.value));
 document.getElementById('tlAddScheduleBtn').addEventListener('click', tlAddSchedule);
+document.getElementById('tlAddFormToggle').addEventListener('click', () => {
+  const panel = document.getElementById('tlAddFormPanel');
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  document.getElementById('tlAddFormToggle').textContent = isHidden ? 'Cancel' : '+ Add Schedule Entry';
+  if (isHidden) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
 
 async function loadTeacherLocatorPage() {
   document.getElementById('tlAdminSection').style.display = App.session?.isAdmin ? 'block' : 'none';
