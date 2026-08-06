@@ -264,6 +264,65 @@ const App = (function () {
     return res;
   }
 
+  // ---------- Supabase Storage (file uploads/downloads) ----------
+  // Mirrors the supaGet/supaFetch 401-retry pattern above, but against
+  // the Storage API instead of PostgREST. Bucket must already exist and
+  // have RLS/storage policies set up in Supabase.
+  function storageHeaders() {
+    return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.access_token}` };
+  }
+
+  async function storageUpload(bucket, path, file) {
+    const attempt = () => fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(path)}`, {
+      method: 'POST',
+      headers: { ...storageHeaders(), 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    });
+    let res = await attempt();
+    if (res.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      res = await attempt();
+    }
+    return res;
+  }
+
+  // Bucket is assumed private, so downloads go through a short-lived
+  // signed URL rather than a public link.
+  async function storageSignedUrl(bucket, path, expiresIn = 60) {
+    const attempt = () => fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${encodeURIComponent(path)}`, {
+      method: 'POST',
+      headers: { ...storageHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn }),
+    });
+    let res = await attempt();
+    if (res.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      res = await attempt();
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || `Couldn't get a download link (${res.status})`);
+    }
+    const data = await res.json();
+    return `${SUPABASE_URL}/storage/v1${data.signedURL}`;
+  }
+
+  async function storageDelete(bucket, path) {
+    const attempt = () => fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(path)}`, {
+      method: 'DELETE',
+      headers: storageHeaders(),
+    });
+    let res = await attempt();
+    if (res.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      res = await attempt();
+    }
+    return res;
+  }
+
   function statusFor(qty) {
     if (qty < 4) return { cls: 'critical', label: 'Critical' };
     if (qty <= 5) return { cls: 'low', label: 'Low' };
@@ -397,6 +456,9 @@ const App = (function () {
     get session() { return session; },
     supaGet,
     supaFetch,
+    storageUpload,
+    storageSignedUrl,
+    storageDelete,
     authHeaders,
     refreshIfNeeded,
     escapeHtml,
