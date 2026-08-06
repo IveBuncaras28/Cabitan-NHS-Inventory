@@ -115,6 +115,10 @@
               <select id="sectionFilter"><option value="">All</option></select>
             </div>
             <div class="select-wrap">
+              <label for="genderFilter">Gender</label>
+              <select id="genderFilter"><option value="">All</option><option>Male</option><option>Female</option></select>
+            </div>
+            <div class="select-wrap">
               <label for="statusFilter">Status</label>
               <select id="statusFilter"><option value="">All</option><option>Active</option><option>Transferred</option><option>Dropped</option></select>
             </div>
@@ -134,6 +138,12 @@
           <input id="studName" type="text" placeholder="e.g. Juan Dela Cruz" />
           <label for="studLRN">LRN No.</label>
           <input id="studLRN" type="text" inputmode="numeric" placeholder="12-digit Learner Reference Number" />
+          <label for="studGender">Gender</label>
+          <select id="studGender">
+            <option value="">Select gender</option>
+            <option>Male</option>
+            <option>Female</option>
+          </select>
           <label for="studYear">Year level</label>
           <select id="studYear">
             <option value="">Select year level</option>
@@ -226,6 +236,7 @@ function resetForm() {
   document.getElementById('studSubmit').textContent = 'Add Student';
   ['studName','studLRN','studSection','studDOFA','studLastDay'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('studYear').value = '';
+  document.getElementById('studGender').value = '';
   document.getElementById('studStatus').value = 'Active';
   toggleLastDayField();
   document.getElementById('studError').style.display = 'none';
@@ -237,6 +248,7 @@ function startEdit(s) {
   document.getElementById('studSubmit').textContent = 'Save Changes';
   document.getElementById('studName').value = s.full_name || '';
   document.getElementById('studLRN').value = s.lrn || '';
+  document.getElementById('studGender').value = s.gender || '';
   document.getElementById('studYear').value = s.year_level || '';
   document.getElementById('studSection').value = s.section || '';
   document.getElementById('studDOFA').value = s.date_first_attendance || '';
@@ -269,14 +281,15 @@ async function submitStudent() {
 
   const full_name = document.getElementById('studName').value.trim();
   const lrn = document.getElementById('studLRN').value.trim();
+  const gender = document.getElementById('studGender').value;
   const year_level = document.getElementById('studYear').value;
   const section = document.getElementById('studSection').value.trim();
   const date_first_attendance = document.getElementById('studDOFA').value || null;
   const status = document.getElementById('studStatus').value;
   const last_day_attendance = status !== 'Active' ? (document.getElementById('studLastDay').value || null) : null;
 
-  if (!full_name || !lrn || !year_level || !section) {
-    errEl.textContent = 'Name, LRN, year level, and section are all required.';
+  if (!full_name || !lrn || !gender || !year_level || !section) {
+    errEl.textContent = 'Name, LRN, gender, year level, and section are all required.';
     errEl.style.display = 'block';
     return;
   }
@@ -286,7 +299,7 @@ async function submitStudent() {
     return;
   }
 
-  const payload = { full_name, lrn, year_level, section, date_first_attendance, status, last_day_attendance };
+  const payload = { full_name, lrn, gender, year_level, section, date_first_attendance, status, last_day_attendance };
   const btn = document.getElementById('studSubmit');
   btn.disabled = true;
   btn.textContent = editingId ? 'Saving\u2026' : 'Adding\u2026';
@@ -364,16 +377,19 @@ function renderStatCards() {
 function getFilteredSortedStudents() {
   const yearVal = document.getElementById('yearFilter').value;
   const sectionVal = document.getElementById('sectionFilter').value;
+  const genderVal = document.getElementById('genderFilter').value;
   const statusVal = document.getElementById('statusFilter').value;
   const search = document.getElementById('studentSearch').value.trim().toLowerCase();
 
   document.getElementById('yearFilter').classList.toggle('active-filter', !!yearVal);
   document.getElementById('sectionFilter').classList.toggle('active-filter', !!sectionVal);
+  document.getElementById('genderFilter').classList.toggle('active-filter', !!genderVal);
   document.getElementById('statusFilter').classList.toggle('active-filter', !!statusVal);
 
   let rows = allStudents;
   if (yearVal) rows = rows.filter(s => s.year_level === yearVal);
   if (sectionVal) rows = rows.filter(s => s.section === sectionVal);
+  if (genderVal) rows = rows.filter(s => s.gender === genderVal);
   if (statusVal) rows = rows.filter(s => s.status === statusVal);
   if (search) rows = rows.filter(s => (s.full_name || '').toLowerCase().includes(search) || (s.lrn || '').toLowerCase().includes(search));
 
@@ -390,6 +406,7 @@ function getFilteredSortedStudents() {
 const SORT_COLUMNS = [
   { key: 'lrn', label: 'LRN No.' },
   { key: 'full_name', label: 'Name' },
+  { key: 'gender', label: 'Gender' },
   { key: 'year_level', label: 'Year Level' },
   { key: 'section', label: 'Section' },
   { key: 'status', label: 'Status' },
@@ -434,6 +451,7 @@ function renderStudentList() {
               <td>${start + i + 1}</td>
               <td>${App.escapeHtml(s.lrn || '\u2014')}</td>
               <td>${App.escapeHtml(s.full_name)}</td>
+              <td>${App.escapeHtml(s.gender || '\u2014')}</td>
               <td>${App.escapeHtml(s.year_level || '\u2014')}</td>
               <td>${App.escapeHtml(s.section || '\u2014')}</td>
               <td><span class="badge ${statusClass(s.status)}">${App.escapeHtml(s.status)}</span></td>
@@ -501,7 +519,7 @@ function renderPagination(totalRows, pageSize, totalPages) {
   });
 }
 
-['yearFilter','sectionFilter','statusFilter'].forEach(id => {
+['yearFilter','sectionFilter','genderFilter','statusFilter'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => { currentPage = 1; renderStudentList(); });
 });
 document.getElementById('studentSearch').addEventListener('input', () => { currentPage = 1; renderStudentList(); });
@@ -510,6 +528,7 @@ document.getElementById('pageSizeSelect').addEventListener('change', () => { cur
 document.getElementById('filterResetBtn').addEventListener('click', () => {
   document.getElementById('yearFilter').value = '';
   document.getElementById('sectionFilter').value = '';
+  document.getElementById('genderFilter').value = '';
   document.getElementById('statusFilter').value = '';
   document.getElementById('studentSearch').value = '';
   currentPage = 1;
@@ -523,11 +542,11 @@ function csvEscape(val) {
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const rows = getFilteredSortedStudents();
-  const header = ['LRN No.', 'Name', 'Year Level', 'Section', 'Status', 'First Attendance', 'Last Day'];
+  const header = ['LRN No.', 'Name', 'Gender', 'Year Level', 'Section', 'Status', 'First Attendance', 'Last Day'];
   const lines = [header.join(',')];
   rows.forEach(s => {
     lines.push([
-      csvEscape(s.lrn), csvEscape(s.full_name), csvEscape(s.year_level), csvEscape(s.section),
+      csvEscape(s.lrn), csvEscape(s.full_name), csvEscape(s.gender), csvEscape(s.year_level), csvEscape(s.section),
       csvEscape(s.status), csvEscape(s.date_first_attendance),
       csvEscape(s.status !== 'Active' ? s.last_day_attendance : ''),
     ].join(','));
@@ -545,7 +564,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 });
 
 async function loadStudents() {
-  allStudents = await App.supaGet('student_records?select=id,full_name,lrn,year_level,section,status,date_first_attendance,last_day_attendance&deleted=eq.false');
+  allStudents = await App.supaGet('student_records?select=id,full_name,lrn,gender,year_level,section,status,date_first_attendance,last_day_attendance&deleted=eq.false');
   populateRosterFilters();
   renderStatCards();
   renderStudentList();
