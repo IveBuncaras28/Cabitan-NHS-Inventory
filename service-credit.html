@@ -34,6 +34,7 @@
       <p class="nav-group">Personnel</p>
       <a href="teacher-locator.html" class="nav-link" data-nav="teacher-locator"><span class="nav-icon" style="background:var(--teal-bg);">&#128205;</span>Teacher Locator</a>
       <a href="service-credit.html" class="nav-link" data-nav="service-credit"><span class="nav-icon" style="background:var(--teal-bg);">&#128197;</span>Service Credit Monitor</a>
+      <a href="downloads.html" class="nav-link" data-nav="downloads"><span class="nav-icon" style="background:var(--teal-bg);">&#128229;</span>Downloads</a>
       <p class="nav-more">More categories will show up here as they're added.</p>
     </nav>
     <div class="sidebar-foot" id="sidebarAuth"></div>
@@ -81,24 +82,6 @@
       <div class="container">
         <div id="globalStatus" style="display:none;"></div>
 
-      <section id="downloadsSection">
-        <h2><span class="icon" style="background:var(--blue-bg);">&#128190;</span>Downloads</h2>
-        <button type="button" class="dl-upload-toggle" id="dlUploadToggle" style="display:none;">+ Upload a File</button>
-        <div id="downloadsAdminUpload" style="display:none; margin-bottom:16px;">
-          <div class="request-form">
-            <label for="dlFileName">File name (shown to staff)</label>
-            <input id="dlFileName" type="text" placeholder="e.g. Application for Leave Form" />
-            <label for="dlDescription">Description</label>
-            <input id="dlDescription" type="text" placeholder="Optional, e.g. Annex E" />
-            <label for="dlFile">File</label>
-            <input id="dlFile" type="file" />
-            <p class="request-error" id="dlUploadError"></p>
-            <button type="button" class="primary-btn" id="dlUploadSubmit">Upload File</button>
-          </div>
-        </div>
-        <div class="dl-table-wrap" id="downloadsTableWrap"></div>
-      </section>
-
       <section id="myBalanceSection">
         <h2><span class="icon" style="background:var(--teal-bg);">&#128176;</span>My Service Credit Balance</h2>
         <div class="tiles" id="balanceTiles"></div>
@@ -111,7 +94,8 @@
 
       <section id="applyLeaveSection">
         <h2><span class="icon" style="background:var(--rust-bg);">&#128228;</span>Apply for Leave</h2>
-        <div class="request-form">
+        <button type="button" class="section-toggle-btn" id="leaveFormToggle">+ Apply for Leave</button>
+        <div class="request-form" id="leaveFormPanel" style="display:none;">
           <label for="leaveType">Credit type</label>
           <select id="leaveType"><option value="SO">Special Order (SO)</option><option value="LOCAL">Local</option></select>
           <label for="leaveRef">Reference number to use</label>
@@ -139,8 +123,9 @@
 
       <section id="adminGrantSection" style="display:none; margin-top:8px;">
         <h2><span class="icon" style="background:var(--blue-bg);">&#10133;</span>Log a Credit Grant (Admin)</h2>
+        <button type="button" class="section-toggle-btn" id="grantFormToggle">+ Log a Credit Grant</button>
         <div class="two-col">
-          <div class="request-form">
+          <div class="request-form" id="grantFormPanel" style="display:none;">
             <label for="grantEmail">Employee email</label>
             <input id="grantEmail" type="email" placeholder="employee@deped.gov.ph" />
             <label for="grantName">Employee name</label>
@@ -179,149 +164,6 @@
 
 <script>
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString() : '\u2014'; }
-
-// ---------- Downloads ----------
-function sanitizeFilename(name) {
-  return name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-}
-
-async function loadDownloads() {
-  const rows = await App.supaGet('downloads?select=id,file_name,description,storage_path,original_filename&deleted=eq.false&order=uploaded_at.desc');
-  renderDownloads(rows);
-}
-
-function renderDownloads(rows) {
-  const isAdmin = !!App.session?.isAdmin;
-  const el = document.getElementById('downloadsTableWrap');
-  if (!rows.length) {
-    el.innerHTML = App.emptyState("&#128190;", "No files have been uploaded yet.");
-    return;
-  }
-  el.innerHTML = `
-    <table class="dl-table">
-      <thead><tr><th>Download</th><th>File</th><th>Description</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
-      <tbody>
-        ${rows.map(r => `
-          <tr>
-            <td><button type="button" class="dl-btn" data-id="${r.id}">&#8681; Download</button></td>
-            <td>${App.escapeHtml(r.file_name)}</td>
-            <td>${App.escapeHtml(r.description || '')}</td>
-            ${isAdmin ? `<td><button type="button" class="dl-remove" data-id="${r.id}">Remove</button></td>` : ''}
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-  el.querySelectorAll('.dl-btn').forEach(btn => {
-    btn.addEventListener('click', () => downloadFile(rows.find(r => r.id === btn.dataset.id), btn));
-  });
-  el.querySelectorAll('.dl-remove').forEach(btn => {
-    btn.addEventListener('click', () => removeDownload(rows.find(r => r.id === btn.dataset.id), btn));
-  });
-}
-
-async function downloadFile(row, btn) {
-  if (!row) return;
-  btn.disabled = true;
-  const original = btn.innerHTML;
-  btn.textContent = 'Preparing\u2026';
-  try {
-    const url = await App.storageSignedUrl('downloads', row.storage_path, 60);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = row.original_filename || row.file_name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch (e) {
-    App.toast(e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = original;
-  }
-}
-
-async function removeDownload(row, btn) {
-  if (!row) return;
-  const ok = await App.confirmDialog(`Remove "${row.file_name}" from Downloads? Staff won't be able to download it anymore.`, {
-    title: 'Remove this file?', okLabel: 'Remove', danger: true,
-  });
-  if (!ok) return;
-  btn.disabled = true;
-  btn.textContent = 'Removing\u2026';
-  try {
-    const res = await App.supaFetch(`downloads?id=eq.${row.id}`, {
-      method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ deleted: true }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || body.hint || `Couldn't remove this file (${res.status})`);
-    }
-    App.toast('File removed.', 'success');
-    await App.storageDelete('downloads', row.storage_path).catch(() => {});
-    await loadDownloads();
-  } catch (e) {
-    App.toast(e.message, 'error');
-    btn.disabled = false;
-    btn.textContent = 'Remove';
-  }
-}
-
-async function submitDownloadUpload() {
-  const fileName = document.getElementById('dlFileName').value.trim();
-  const description = document.getElementById('dlDescription').value.trim() || null;
-  const fileInput = document.getElementById('dlFile');
-  const file = fileInput.files[0];
-  const errEl = document.getElementById('dlUploadError');
-  errEl.style.display = 'none';
-
-  if (!fileName || !file) {
-    errEl.textContent = 'Give the file a name and choose a file to upload.';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  const btn = document.getElementById('dlUploadSubmit');
-  btn.disabled = true;
-  btn.textContent = 'Uploading\u2026';
-
-  try {
-    const path = `${crypto.randomUUID ? crypto.randomUUID() : Date.now()}-${sanitizeFilename(file.name)}`;
-    const uploadRes = await App.storageUpload('downloads', path, file);
-    if (!uploadRes.ok) {
-      const body = await uploadRes.json().catch(() => ({}));
-      throw new Error(body.message || `Upload failed (${uploadRes.status})`);
-    }
-    const insertRes = await App.supaFetch('downloads', {
-      method: 'POST', headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        file_name: fileName, description, storage_path: path,
-        original_filename: file.name, uploaded_by: App.session.email, deleted: false,
-      }),
-    });
-    if (!insertRes.ok) {
-      const body = await insertRes.json().catch(() => ({}));
-      throw new Error(body.message || `Couldn't save this file's listing (${insertRes.status})`);
-    }
-    App.toast(`Uploaded "${fileName}".`, 'success');
-    document.getElementById('dlFileName').value = '';
-    document.getElementById('dlDescription').value = '';
-    fileInput.value = '';
-    document.getElementById('downloadsAdminUpload').style.display = 'none';
-    await loadDownloads();
-  } catch (e) {
-    errEl.textContent = e.message;
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Upload File';
-  }
-}
-document.getElementById('dlUploadSubmit').addEventListener('click', submitDownloadUpload);
-document.getElementById('dlUploadToggle').addEventListener('click', () => {
-  const panel = document.getElementById('downloadsAdminUpload');
-  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-});
 
 async function loadMyBalance() {
   const email = App.session.email;
@@ -515,9 +357,11 @@ async function submitLeave() {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || `Request failed (${res.status})`);
     }
-    document.getElementById('leaveSuccess').textContent = 'Leave request submitted.';
-    document.getElementById('leaveSuccess').style.display = 'block';
+    document.getElementById('leaveSuccess').style.display = 'none';
+    App.toast('Leave request submitted.', 'success');
     ['leaveStart','leaveEnd','leaveReason'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('leaveFormPanel').style.display = 'none';
+    document.getElementById('leaveFormToggle').textContent = '+ Apply for Leave';
     await loadAvailableReferences();
     await loadMyRequests();
   } catch (e) {
@@ -569,9 +413,11 @@ async function submitGrant() {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || `Couldn't log grant (${res.status})`);
     }
-    document.getElementById('grantSuccess').textContent = 'Credit grant logged.';
-    document.getElementById('grantSuccess').style.display = 'block';
+    document.getElementById('grantSuccess').style.display = 'none';
+    App.toast('Credit grant logged.', 'success');
     ['grantEmail','grantName','grantRef','grantDate','grantDays','grantNotes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('grantFormPanel').style.display = 'none';
+    document.getElementById('grantFormToggle').textContent = '+ Log a Credit Grant';
     await loadRecentGrants();
   } catch (e) {
     document.getElementById('grantError').textContent = e.message;
@@ -613,15 +459,27 @@ async function loadAdminLeaveQueue() {
 
 document.getElementById('leaveSubmitBtn').addEventListener('click', submitLeave);
 document.getElementById('grantSubmitBtn').addEventListener('click', submitGrant);
+document.getElementById('leaveFormToggle').addEventListener('click', () => {
+  const panel = document.getElementById('leaveFormPanel');
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  document.getElementById('leaveFormToggle').textContent = isHidden ? 'Cancel' : '+ Apply for Leave';
+  if (isHidden) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+document.getElementById('grantFormToggle').addEventListener('click', () => {
+  const panel = document.getElementById('grantFormPanel');
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  document.getElementById('grantFormToggle').textContent = isHidden ? 'Cancel' : '+ Log a Credit Grant';
+  if (isHidden) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
 
 async function loadServiceCreditPage() {
   const isAdmin = App.session?.isAdmin;
   document.getElementById('adminGrantSection').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('adminLeaveSection').style.display = isAdmin ? 'block' : 'none';
-  document.getElementById('dlUploadToggle').style.display = isAdmin ? 'inline-block' : 'none';
-  if (!isAdmin) document.getElementById('downloadsAdminUpload').style.display = 'none';
 
-  const tasks = [loadDownloads(), loadMyBalance(), loadMyHistory(), loadMyRequests(), loadAvailableReferences()];
+  const tasks = [loadMyBalance(), loadMyHistory(), loadMyRequests(), loadAvailableReferences()];
   if (isAdmin) tasks.push(loadRecentGrants(), loadAdminLeaveQueue());
   await Promise.all(tasks);
   document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
