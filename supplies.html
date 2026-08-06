@@ -32,6 +32,7 @@
       <p class="nav-group">Personnel Services</p>
       <a href="teacher-locator.html" class="nav-link" data-nav="teacher-locator"><span class="nav-icon" style="background:var(--teal-bg);">&#128205;</span>Teacher Locator</a>
       <a href="service-credit.html" class="nav-link" data-nav="service-credit"><span class="nav-icon" style="background:var(--teal-bg);">&#128197;</span>Service Credit Monitor</a>
+      <a href="downloads.html" class="nav-link" data-nav="downloads"><span class="nav-icon" style="background:var(--teal-bg);">&#128229;</span>Downloads</a>
       <p class="nav-more">More categories will show up here as they're added.</p>
     </nav>
     <div class="sidebar-foot" id="sidebarAuth"></div>
@@ -86,7 +87,8 @@
 
       <section id="requestSection">
         <h2><span class="icon" style="background:var(--rust-bg);">&#128221;</span>Request an Item</h2>
-        <div class="request-form">
+        <button type="button" class="section-toggle-btn" id="reqFormToggle">+ Request an Item</button>
+        <div class="request-form" id="reqFormPanel" style="display:none;">
           <label for="reqItemName">Item name</label>
           <input id="reqItemName" type="text" placeholder="e.g. Bond paper (long)" />
           <label for="reqQty">Quantity needed</label>
@@ -290,10 +292,12 @@ async function submitItemRequest() {
       throw new Error(body.message || body.hint || `Request failed (${res.status}). Check the INSERT policy on item_requests.`);
     }
 
-    document.getElementById('reqSuccess').textContent = 'Request submitted \u2014 thank you!';
-    document.getElementById('reqSuccess').style.display = 'block';
+    document.getElementById('reqSuccess').style.display = 'none';
+    App.toast('Request submitted \u2014 thank you!', 'success');
     document.getElementById('reqItemName').value = ''; document.getElementById('reqQty').value = '';
     document.getElementById('reqBy').value = ''; document.getElementById('reqNotes').value = '';
+    document.getElementById('reqFormPanel').style.display = 'none';
+    document.getElementById('reqFormToggle').textContent = '+ Request an Item';
     if (App.session.isAdmin) await loadItemRequests();
   } catch (e) {
     document.getElementById('reqError').textContent = e.message;
@@ -302,6 +306,13 @@ async function submitItemRequest() {
 }
 
 document.getElementById('reqSubmit').addEventListener('click', submitItemRequest);
+document.getElementById('reqFormToggle').addEventListener('click', () => {
+  const panel = document.getElementById('reqFormPanel');
+  const isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  document.getElementById('reqFormToggle').textContent = isHidden ? 'Cancel' : '+ Request an Item';
+  if (isHidden) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
 
 async function loadSuppliesPage() {
   document.getElementById('requestsListSection').style.display = App.session?.isAdmin ? 'block' : 'none';
