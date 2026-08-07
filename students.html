@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Student Profiles — Cabitan NHS</title>
+<link rel="icon" type="image/jpeg" href="school-logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
@@ -107,6 +108,10 @@
         <div class="toolbar-row">
           <div class="filter-bar">
             <div class="select-wrap">
+              <label for="schoolYearFilter">School year</label>
+              <select id="schoolYearFilter"><option value="">All</option></select>
+            </div>
+            <div class="select-wrap">
               <label for="yearFilter">Year level</label>
               <select id="yearFilter"><option value="">All</option></select>
             </div>
@@ -144,6 +149,8 @@
             <option>Male</option>
             <option>Female</option>
           </select>
+          <label for="studSchoolYear">School year</label>
+          <select id="studSchoolYear"></select>
           <label for="studYear">Year level</label>
           <select id="studYear">
             <option value="">Select year level</option>
@@ -198,7 +205,7 @@
       </div>
     </main>
 
-    <footer>DEVELOPED BY: IVY B. BUNCARAS, SENIOR BOOKKEEPER &middot; REFRESHES EVERY 30 SECONDS</footer>
+    <footer>STAFF SIGN-IN REQUIRED &middot; REFRESHES EVERY 30 SECONDS</footer>
   </div>
 </div>
 
@@ -216,6 +223,33 @@ function statusClass(status) {
   if (status === 'Transferred') return 'low';
   return 'critical'; // Dropped
 }
+
+// Philippine school year runs roughly June to March/April, so a date
+// before June still belongs to the school year that started the
+// previous calendar year.
+function computeCurrentSchoolYear() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const startYear = now.getMonth() >= 5 ? y : y - 1;
+  return `${startYear}-${startYear + 1}`;
+}
+
+function generateSchoolYearOptions() {
+  const currentStart = parseInt(computeCurrentSchoolYear().split('-')[0], 10);
+  const years = [];
+  for (let offset = -4; offset <= 1; offset++) {
+    const start = currentStart + offset;
+    years.push(`${start}-${start + 1}`);
+  }
+  return years;
+}
+
+function populateSchoolYearFormOptions() {
+  const sel = document.getElementById('studSchoolYear');
+  const current = computeCurrentSchoolYear();
+  sel.innerHTML = generateSchoolYearOptions().map(sy => `<option${sy === current ? ' selected' : ''}>${sy}</option>`).join('');
+}
+populateSchoolYearFormOptions();
 
 function toggleLastDayField() {
   const status = document.getElementById('studStatus').value;
@@ -237,6 +271,7 @@ function resetForm() {
   ['studName','studLRN','studSection','studDOFA','studLastDay'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('studYear').value = '';
   document.getElementById('studGender').value = '';
+  populateSchoolYearFormOptions();
   document.getElementById('studStatus').value = 'Active';
   toggleLastDayField();
   document.getElementById('studError').style.display = 'none';
@@ -249,6 +284,8 @@ function startEdit(s) {
   document.getElementById('studName').value = s.full_name || '';
   document.getElementById('studLRN').value = s.lrn || '';
   document.getElementById('studGender').value = s.gender || '';
+  populateSchoolYearFormOptions();
+  if (s.school_year) document.getElementById('studSchoolYear').value = s.school_year;
   document.getElementById('studYear').value = s.year_level || '';
   document.getElementById('studSection').value = s.section || '';
   document.getElementById('studDOFA').value = s.date_first_attendance || '';
@@ -282,14 +319,15 @@ async function submitStudent() {
   const full_name = document.getElementById('studName').value.trim();
   const lrn = document.getElementById('studLRN').value.trim();
   const gender = document.getElementById('studGender').value;
+  const school_year = document.getElementById('studSchoolYear').value;
   const year_level = document.getElementById('studYear').value;
   const section = document.getElementById('studSection').value.trim();
   const date_first_attendance = document.getElementById('studDOFA').value || null;
   const status = document.getElementById('studStatus').value;
   const last_day_attendance = status !== 'Active' ? (document.getElementById('studLastDay').value || null) : null;
 
-  if (!full_name || !lrn || !gender || !year_level || !section) {
-    errEl.textContent = 'Name, LRN, gender, year level, and section are all required.';
+  if (!full_name || !lrn || !gender || !school_year || !year_level || !section) {
+    errEl.textContent = 'Name, LRN, gender, school year, year level, and section are all required.';
     errEl.style.display = 'block';
     return;
   }
@@ -299,7 +337,7 @@ async function submitStudent() {
     return;
   }
 
-  const payload = { full_name, lrn, gender, year_level, section, date_first_attendance, status, last_day_attendance };
+  const payload = { full_name, lrn, gender, school_year, year_level, section, date_first_attendance, status, last_day_attendance };
   const btn = document.getElementById('studSubmit');
   btn.disabled = true;
   btn.textContent = editingId ? 'Saving\u2026' : 'Adding\u2026';
@@ -358,35 +396,44 @@ async function removeStudent(s, btn) {
 function populateRosterFilters() {
   const years = [...new Set(allStudents.map(s => s.year_level).filter(Boolean))].sort();
   const sections = [...new Set(allStudents.map(s => s.section).filter(Boolean))].sort();
+  const schoolYears = [...new Set(allStudents.map(s => s.school_year).filter(Boolean))].sort().reverse();
   const yearSel = document.getElementById('yearFilter');
   const sectionSel = document.getElementById('sectionFilter');
-  const curYear = yearSel.value, curSection = sectionSel.value;
+  const schoolYearSel = document.getElementById('schoolYearFilter');
+  const curYear = yearSel.value, curSection = sectionSel.value, curSchoolYear = schoolYearSel.value;
   yearSel.innerHTML = '<option value="">All</option>' + years.map(y => `<option value="${App.escapeHtml(y)}">${App.escapeHtml(y)}</option>`).join('');
   sectionSel.innerHTML = '<option value="">All</option>' + sections.map(s => `<option value="${App.escapeHtml(s)}">${App.escapeHtml(s)}</option>`).join('');
+  schoolYearSel.innerHTML = '<option value="">All</option>' + schoolYears.map(sy => `<option value="${App.escapeHtml(sy)}">${App.escapeHtml(sy)}</option>`).join('');
   yearSel.value = curYear;
   sectionSel.value = curSection;
+  schoolYearSel.value = curSchoolYear || (schoolYears.includes(computeCurrentSchoolYear()) ? computeCurrentSchoolYear() : '');
 }
 
 function renderStatCards() {
-  document.getElementById('statTotal').textContent = allStudents.length;
-  document.getElementById('statActive').textContent = allStudents.filter(s => s.status === 'Active').length;
-  document.getElementById('statTransferred').textContent = allStudents.filter(s => s.status === 'Transferred').length;
-  document.getElementById('statDropped').textContent = allStudents.filter(s => s.status === 'Dropped').length;
+  const syVal = document.getElementById('schoolYearFilter').value;
+  const rows = syVal ? allStudents.filter(s => s.school_year === syVal) : allStudents;
+  document.getElementById('statTotal').textContent = rows.length;
+  document.getElementById('statActive').textContent = rows.filter(s => s.status === 'Active').length;
+  document.getElementById('statTransferred').textContent = rows.filter(s => s.status === 'Transferred').length;
+  document.getElementById('statDropped').textContent = rows.filter(s => s.status === 'Dropped').length;
 }
 
 function getFilteredSortedStudents() {
+  const schoolYearVal = document.getElementById('schoolYearFilter').value;
   const yearVal = document.getElementById('yearFilter').value;
   const sectionVal = document.getElementById('sectionFilter').value;
   const genderVal = document.getElementById('genderFilter').value;
   const statusVal = document.getElementById('statusFilter').value;
   const search = document.getElementById('studentSearch').value.trim().toLowerCase();
 
+  document.getElementById('schoolYearFilter').classList.toggle('active-filter', !!schoolYearVal);
   document.getElementById('yearFilter').classList.toggle('active-filter', !!yearVal);
   document.getElementById('sectionFilter').classList.toggle('active-filter', !!sectionVal);
   document.getElementById('genderFilter').classList.toggle('active-filter', !!genderVal);
   document.getElementById('statusFilter').classList.toggle('active-filter', !!statusVal);
 
   let rows = allStudents;
+  if (schoolYearVal) rows = rows.filter(s => s.school_year === schoolYearVal);
   if (yearVal) rows = rows.filter(s => s.year_level === yearVal);
   if (sectionVal) rows = rows.filter(s => s.section === sectionVal);
   if (genderVal) rows = rows.filter(s => s.gender === genderVal);
@@ -407,6 +454,7 @@ const SORT_COLUMNS = [
   { key: 'lrn', label: 'LRN No.' },
   { key: 'full_name', label: 'Name' },
   { key: 'gender', label: 'Gender' },
+  { key: 'school_year', label: 'School Year' },
   { key: 'year_level', label: 'Year Level' },
   { key: 'section', label: 'Section' },
   { key: 'status', label: 'Status' },
@@ -452,6 +500,7 @@ function renderStudentList() {
               <td>${App.escapeHtml(s.lrn || '\u2014')}</td>
               <td>${App.escapeHtml(s.full_name)}</td>
               <td>${App.escapeHtml(s.gender || '\u2014')}</td>
+              <td>${App.escapeHtml(s.school_year || '\u2014')}</td>
               <td>${App.escapeHtml(s.year_level || '\u2014')}</td>
               <td>${App.escapeHtml(s.section || '\u2014')}</td>
               <td><span class="badge ${statusClass(s.status)}">${App.escapeHtml(s.status)}</span></td>
@@ -522,16 +571,23 @@ function renderPagination(totalRows, pageSize, totalPages) {
 ['yearFilter','sectionFilter','genderFilter','statusFilter'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => { currentPage = 1; renderStudentList(); });
 });
+document.getElementById('schoolYearFilter').addEventListener('change', () => {
+  currentPage = 1;
+  renderStatCards();
+  renderStudentList();
+});
 document.getElementById('studentSearch').addEventListener('input', () => { currentPage = 1; renderStudentList(); });
 document.getElementById('pageSizeSelect').addEventListener('change', () => { currentPage = 1; renderStudentList(); });
 
 document.getElementById('filterResetBtn').addEventListener('click', () => {
+  document.getElementById('schoolYearFilter').value = '';
   document.getElementById('yearFilter').value = '';
   document.getElementById('sectionFilter').value = '';
   document.getElementById('genderFilter').value = '';
   document.getElementById('statusFilter').value = '';
   document.getElementById('studentSearch').value = '';
   currentPage = 1;
+  renderStatCards();
   renderStudentList();
 });
 
@@ -542,11 +598,11 @@ function csvEscape(val) {
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const rows = getFilteredSortedStudents();
-  const header = ['LRN No.', 'Name', 'Gender', 'Year Level', 'Section', 'Status', 'First Attendance', 'Last Day'];
+  const header = ['LRN No.', 'Name', 'Gender', 'School Year', 'Year Level', 'Section', 'Status', 'First Attendance', 'Last Day'];
   const lines = [header.join(',')];
   rows.forEach(s => {
     lines.push([
-      csvEscape(s.lrn), csvEscape(s.full_name), csvEscape(s.gender), csvEscape(s.year_level), csvEscape(s.section),
+      csvEscape(s.lrn), csvEscape(s.full_name), csvEscape(s.gender), csvEscape(s.school_year), csvEscape(s.year_level), csvEscape(s.section),
       csvEscape(s.status), csvEscape(s.date_first_attendance),
       csvEscape(s.status !== 'Active' ? s.last_day_attendance : ''),
     ].join(','));
@@ -564,7 +620,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 });
 
 async function loadStudents() {
-  allStudents = await App.supaGet('student_records?select=id,full_name,lrn,gender,year_level,section,status,date_first_attendance,last_day_attendance&deleted=eq.false');
+  allStudents = await App.supaGet('student_records?select=id,full_name,lrn,gender,school_year,year_level,section,status,date_first_attendance,last_day_attendance&deleted=eq.false');
   populateRosterFilters();
   renderStatCards();
   renderStudentList();
