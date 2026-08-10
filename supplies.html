@@ -164,10 +164,24 @@ async function loadItemRequests() {
     'item_requests?select=id,item_name,category,supplier,unit,price,quantity,requested_by,notes,status,requested_at&status=eq.Pending&order=requested_at.desc'
   );
   pendingRequests = rows;
+
+  // Count how many pending items each requester has, so the row can
+  // flag "these will combine into one RIS" instead of admin only
+  // discovering that after clicking Print RIS.
+  const countByRequester = {};
+  rows.forEach(r => {
+    const key = r.requested_by || 'Unspecified';
+    countByRequester[key] = (countByRequester[key] || 0) + 1;
+  });
+
   const el = document.getElementById('requestsList');
   el.innerHTML = rows.length
     ? rows.map((r, i) => {
-        const meta = [r.requested_by, r.notes].filter(Boolean).join(' \u2014 ') || 'No additional notes';
+        const requesterKey = r.requested_by || 'Unspecified';
+        const groupCount = countByRequester[requesterKey];
+        const metaParts = [r.requested_by, r.notes].filter(Boolean);
+        let meta = metaParts.join(' \u2014 ') || 'No additional notes';
+        if (groupCount > 1) meta += ` \u00b7 ${groupCount} items from this requester`;
         const when = r.requested_at ? new Date(r.requested_at).toLocaleDateString() : '\u2014';
         return `
           <div class="req-row" style="animation-delay:${i * 25}ms">
@@ -177,6 +191,7 @@ async function loadItemRequests() {
             </div>
             <div class="req-actions">
               <div class="date">${when}</div>
+              <button class="edit-btn" data-requester="${App.escapeHtml(requesterKey)}">&#128424; Print RIS${groupCount > 1 ? ` (${groupCount})` : ''}</button>
               <button class="remove-btn" data-id="${r.id}">Remove</button>
               <button class="fulfill-btn" data-id="${r.id}">Mark Fulfilled</button>
             </div>
@@ -185,6 +200,9 @@ async function loadItemRequests() {
       }).join('')
     : App.emptyState("&#9989;", "No pending requests — all caught up.");
 
+  el.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => printLocalRIS(btn.dataset.requester));
+  });
   el.querySelectorAll('.fulfill-btn').forEach(btn => {
     btn.addEventListener('click', () => fulfillRequest(rows.find(r => r.id === btn.dataset.id), btn));
   });
@@ -415,6 +433,126 @@ function printPurchaseGuide() {
   win.onload = () => win.print();
 }
 document.getElementById('printRequestsBtn').addEventListener('click', printPurchaseGuide);
+
+// ---------- Local RIS (Requisition and Issue Slip) ----------
+// Groups every pending request from the same requester into one RIS,
+// formatted after the school's Local RIS template (District/Date/School
+// header, Item/Description/Unit/Quantity/Unit Price/Total columns,
+// Requisitioner + School Property Designate + Principal signature lines).
+function printLocalRIS(requesterKey) {
+  const items = pendingRequests.filter(r => (r.requested_by || 'Unspecified') === requesterKey);
+  if (!items.length) {
+    App.toast("Couldn't find that requester's pending items anymore \u2014 try refreshing.", 'error');
+    return;
+  }
+
+  let grandTotal = 0;
+  const rowsHtml = items.map((r, i) => {
+    const qty = Number(r.quantity) || 0;
+    const price = r.price != null ? Number(r.price) : null;
+    const lineTotal = price != null ? qty * price : null;
+    if (lineTotal != null) grandTotal += lineTotal;
+    const description = [r.item_name, r.category].filter(Boolean).join(' \u2014 ');
+    return `
+      <tr>
+        <td class="ctr">${i + 1}</td>
+        <td>${escapeHtmlLocal(description)}</td>
+        <td class="ctr">${escapeHtmlLocal(r.unit || '\u2014')}</td>
+        <td class="ctr">${qty || '\u2014'}</td>
+        <td class="rgt">${price != null ? price.toFixed(2) : '\u2014'}</td>
+        <td class="rgt">${lineTotal != null ? lineTotal.toFixed(2) : '\u2014'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Pad to at least 8 rows so the printed table keeps the template's
+  // proportions even for a single-item RIS.
+  const blankRowsNeeded = Math.max(0, 8 - items.length);
+  const blankRows = Array.from({ length: blankRowsNeeded }).map(() => `
+    <tr><td class="ctr">&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
+  `).join('');
+
+  const today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+  const requesterName = escapeHtmlLocal(requesterKey === 'Unspecified' ? '' : requesterKey);
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Local RIS \u2014 ${requesterName || 'Cabitan NHS'}</title>
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif; color:#1a1a1a; margin:28px; font-size:13px;}
+        .doe{text-align:center; font-size:11px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:2px;}
+        h1{text-align:center; font-size:18px; margin:0 0 18px; letter-spacing:.04em;}
+        .fields{display:flex; justify-content:space-between; margin-bottom:6px; font-size:12.5px;}
+        .fields div{flex:1;}
+        .fields b{display:inline-block; min-width:70px;}
+        table{width:100%; border-collapse:collapse; margin-top:14px; font-size:12.5px;}
+        th, td{border:1px solid #333; padding:6px 8px; vertical-align:top;}
+        th{background:#f0f0f0; text-transform:uppercase; font-size:10.5px; letter-spacing:.03em; text-align:left;}
+        td.ctr, th.ctr{text-align:center;}
+        td.rgt, th.rgt{text-align:right;}
+        tfoot td{font-weight:bold;}
+        .sign{display:flex; justify-content:space-between; margin-top:60px; font-size:12.5px;}
+        .sign > div{width:30%; text-align:center;}
+        .sign .name{border-top:1px solid #333; margin-top:44px; padding-top:4px; font-weight:bold;}
+        .sign .role{font-size:11px; color:#444;}
+        @media print{ body{margin:14mm;} }
+      </style>
+    </head>
+    <body>
+      <div class="doe">Department of Education</div>
+      <h1>Local RIS</h1>
+      <div class="fields">
+        <div><b>District:</b> Mandaon North</div>
+        <div><b>School:</b> Cabitan NHS</div>
+        <div><b>Date:</b> ${today}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="ctr">Item</th>
+            <th>Item Description</th>
+            <th class="ctr">Unit</th>
+            <th class="ctr">Quantity</th>
+            <th class="rgt">Unit Price</th>
+            <th class="rgt">Total</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}${blankRows}</tbody>
+        <tfoot>
+          <tr><td colspan="5" class="rgt">Total</td><td class="rgt">${grandTotal.toFixed(2)}</td></tr>
+        </tfoot>
+      </table>
+      <div class="sign">
+        <div>
+          <div class="name">${requesterName || '&nbsp;'}</div>
+          <div class="role">Printed Name &amp; Signature of Requisitioner</div>
+        </div>
+        <div>
+          <div class="name">&nbsp;</div>
+          <div class="role">School Property Designate</div>
+        </div>
+        <div>
+          <div class="name">LELIS A. BARTOLAY</div>
+          <div class="role">Principal / School Head</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    App.toast("Couldn't open the print window \u2014 check your browser's popup blocker.", 'error');
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.onload = () => win.print();
+}
 
 async function loadSuppliesPage() {
   document.getElementById('requestsListSection').style.display = App.session?.isAdmin ? 'block' : 'none';
