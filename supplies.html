@@ -105,14 +105,17 @@
       </section>
 
       <section id="requestsListSection" style="display:none;">
-        <h2><span class="icon" style="background:var(--rust-bg);">&#9203;</span>Pending Item Requests</h2>
+        <div class="dt-header">
+          <h2 style="margin:0;"><span class="icon" style="background:var(--rust-bg);">&#9203;</span>Pending Item Requests</h2>
+          <button type="button" class="btn-export" id="printRequestsBtn">&#128424; Print Purchase Guide</button>
+        </div>
         <div class="list" id="requestsList"></div>
       </section>
 
       </div>
     </main>
 
-    <footer>DEVELOPED BY: IVY B. BUNCARAS, CABNHS SENIOR BOOKKEEPER &middot; REFRESHES EVERY 30 SECONDS</footer>
+    <footer>STAFF SIGN-IN REQUIRED &middot; REFRESHES EVERY 30 SECONDS</footer>
   </div>
 </div>
 
@@ -154,10 +157,13 @@ async function loadSuppliesStatus() {
     : App.emptyState("&#128230;", "No supplies catalog entries yet.");
 }
 
+let pendingRequests = [];
+
 async function loadItemRequests() {
   const rows = await App.supaGet(
     'item_requests?select=id,item_name,category,supplier,unit,price,quantity,requested_by,notes,status,requested_at&status=eq.Pending&order=requested_at.desc'
   );
+  pendingRequests = rows;
   const el = document.getElementById('requestsList');
   el.innerHTML = rows.length
     ? rows.map((r, i) => {
@@ -314,6 +320,101 @@ document.getElementById('reqFormToggle').addEventListener('click', () => {
   document.getElementById('reqFormToggle').textContent = isHidden ? 'Cancel' : '+ Request an Item';
   if (isHidden) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
+
+function escapeHtmlLocal(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function printPurchaseGuide() {
+  if (!pendingRequests.length) {
+    App.toast('No pending requests to print.', 'info');
+    return;
+  }
+
+  const rows = [...pendingRequests].sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''));
+  let grandTotal = 0;
+
+  const tableRows = rows.map((r, i) => {
+    const qty = Number(r.quantity) || 0;
+    const price = r.price != null ? Number(r.price) : null;
+    const lineTotal = price != null ? qty * price : null;
+    if (lineTotal != null) grandTotal += lineTotal;
+    const when = r.requested_at ? new Date(r.requested_at).toLocaleDateString() : '\u2014';
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtmlLocal(r.item_name)}</td>
+        <td>${escapeHtmlLocal(r.category || '\u2014')}</td>
+        <td>${qty || '\u2014'}</td>
+        <td>${escapeHtmlLocal(r.unit || '\u2014')}</td>
+        <td>${escapeHtmlLocal(r.supplier || '\u2014')}</td>
+        <td>${price != null ? '\u20b1' + price.toFixed(2) : '\u2014'}</td>
+        <td>${lineTotal != null ? '\u20b1' + lineTotal.toFixed(2) : '\u2014'}</td>
+        <td>${escapeHtmlLocal(r.requested_by || '\u2014')}</td>
+        <td>${when}</td>
+        <td>${escapeHtmlLocal(r.notes || '')}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const printedAt = new Date().toLocaleString();
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Purchase Request Guide \u2014 Cabitan NHS</title>
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif; color:#1a1a1a; margin:32px;}
+        h1{font-size:20px; margin:0 0 2px;}
+        .sub{font-size:12px; color:#555; margin:0 0 20px;}
+        table{width:100%; border-collapse:collapse; font-size:12px;}
+        th, td{border:1px solid #ccc; padding:6px 8px; text-align:left; vertical-align:top;}
+        th{background:#f0f0f0; text-transform:uppercase; font-size:10.5px; letter-spacing:.03em;}
+        tfoot td{font-weight:bold; border-top:2px solid #333;}
+        .sign{display:flex; justify-content:space-between; margin-top:56px; font-size:12px;}
+        .sign div{width:45%; text-align:center;}
+        .sign .line{border-top:1px solid #333; margin-top:40px; padding-top:4px;}
+        @media print{ body{margin:14mm;} }
+      </style>
+    </head>
+    <body>
+      <h1>Cabitan National High School \u2014 Purchase Request Guide</h1>
+      <p class="sub">Compiled from pending item requests &middot; Printed ${printedAt} &middot; ${rows.length} item${rows.length === 1 ? '' : 's'}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Item</th><th>Category</th><th>Qty</th><th>Unit</th>
+            <th>Supplier</th><th>Est. Unit Price</th><th>Est. Total</th>
+            <th>Requested By</th><th>Date</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot>
+          <tr><td colspan="7" style="text-align:right;">Grand Total (priced items only)</td><td>\u20b1${grandTotal.toFixed(2)}</td><td colspan="3"></td></tr>
+        </tfoot>
+      </table>
+      <div class="sign">
+        <div><div class="line">Prepared by</div></div>
+        <div><div class="line">Approved by</div></div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    App.toast("Couldn't open the print window \u2014 check your browser's popup blocker.", 'error');
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.onload = () => win.print();
+}
+document.getElementById('printRequestsBtn').addEventListener('click', printPurchaseGuide);
 
 async function loadSuppliesPage() {
   document.getElementById('requestsListSection').style.display = App.session?.isAdmin ? 'block' : 'none';
