@@ -114,16 +114,84 @@
         </div>
       </section>
 
+      <section id="manageStaffSection" style="display:none;">
+        <h2><span class="icon" style="background:var(--rust-bg);">&#128100;</span>Staff Accounts</h2>
+        <button type="button" class="section-toggle-btn" id="staffFormToggle">+ Add Staff Account</button>
+        <div class="request-form" id="staffFormPanel" style="display:none;">
+          <label for="newStaffEmail">Email</label>
+          <input id="newStaffEmail" type="email" autocomplete="off" placeholder="name@deped.gov.ph" />
+          <label for="newStaffPassword">Temporary Password</label>
+          <input id="newStaffPassword" type="text" autocomplete="off" placeholder="At least 8 characters" />
+          <p class="request-error" id="staffError"></p>
+          <p class="request-success" id="staffSuccess"></p>
+          <button type="button" class="primary-btn" id="staffSubmit">Create Account</button>
+        </div>
+        <p class="detail-context">The new staff member signs in with this email and password, and is asked to set their own password on first sign-in.</p>
+      </section>
+
       </div>
     </main>
 
-    <footer>DEVELOPED BY: IVY B. BUNCARAS, CABNHS SENIOR BOOKKEEPER &middot; REFRESHES EVERY 30 SECONDS</footer>
+    <footer>STAFF SIGN-IN REQUIRED &middot; REFRESHES EVERY 30 SECONDS</footer>
   </div>
 </div>
 
 <script src="shared.js"></script>
 
 <script>
+function toggleStaffForm(forceOpen) {
+  const panel = document.getElementById('staffFormPanel');
+  const isHidden = panel.style.display === 'none';
+  const open = forceOpen != null ? forceOpen : isHidden;
+  panel.style.display = open ? 'block' : 'none';
+  document.getElementById('staffFormToggle').textContent = open ? 'Cancel' : '+ Add Staff Account';
+  if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+document.getElementById('staffFormToggle').addEventListener('click', () => toggleStaffForm());
+
+async function submitStaffAccount() {
+  const email = document.getElementById('newStaffEmail').value.trim();
+  const password = document.getElementById('newStaffPassword').value;
+  const errEl = document.getElementById('staffError');
+  const okEl = document.getElementById('staffSuccess');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+
+  if (!email || !password) {
+    errEl.textContent = 'Email and password are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('staffSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Creating\u2026';
+
+  try {
+    const res = await App.supaFunction('create-staff-account', { email, password });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+
+    okEl.textContent = `${email} can now sign in with the password you set.`;
+    okEl.style.display = 'block';
+    document.getElementById('newStaffEmail').value = '';
+    document.getElementById('newStaffPassword').value = '';
+    App.toast(`Staff account created for ${email}.`, 'success');
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+}
+document.getElementById('staffSubmit').addEventListener('click', submitStaffAccount);
+
 async function loadOverview() {
   const [pifRows, catalog, transactions, bookRows, activity] = await Promise.all([
     App.supaGet('pif_records?select=classification&deleted=eq.false'),
@@ -167,7 +235,16 @@ async function loadOverview() {
   document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
 }
 
-App.init(loadOverview);
+function applyAdminVisibility() {
+  document.getElementById('manageStaffSection').style.display = App.session?.isAdmin ? 'block' : 'none';
+}
+
+async function loadDashboardPage() {
+  applyAdminVisibility();
+  await loadOverview();
+}
+
+App.init(loadDashboardPage);
 </script>
 </body>
 </html>
