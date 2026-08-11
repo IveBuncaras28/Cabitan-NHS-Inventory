@@ -323,6 +323,30 @@ const App = (function () {
     return res;
   }
 
+  // ---------- Supabase Edge Functions ----------
+  // Same 401-retry pattern as supaFetch, but against /functions/v1/<name>
+  // instead of PostgREST. Used for privileged server-side actions (e.g.
+  // create-staff-account) that need the service role and can't be done
+  // directly from the client with the anon key.
+  async function supaFunction(name, body) {
+    const attempt = () => fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    let res = await attempt();
+    if (res.status === 401) {
+      const ok = await refreshIfNeeded();
+      if (!ok) throw new Error('Your session expired. Please sign in again.');
+      res = await attempt();
+    }
+    return res;
+  }
+
   function statusFor(qty) {
     if (qty < 4) return { cls: 'critical', label: 'Critical' };
     if (qty <= 5) return { cls: 'low', label: 'Low' };
@@ -459,6 +483,7 @@ const App = (function () {
     storageUpload,
     storageSignedUrl,
     storageDelete,
+    supaFunction,
     authHeaders,
     refreshIfNeeded,
     escapeHtml,
