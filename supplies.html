@@ -172,19 +172,38 @@ async function loadSuppliesStatus() {
     ? rows.map((r, i) => {
         const st = App.statusFor(r.qty);
         return `
-          <div class="row" style="animation-delay:${i * 25}ms">
-            <div>
-              <div class="n">${App.escapeHtml(r.name)}</div>
-              <div class="loc">${App.escapeHtml(r.location || 'Location not set')}</div>
+          <div class="supply-row" style="animation-delay:${i * 25}ms">
+            <div class="supply-row-top">
+              <div>
+                <div class="n">${App.escapeHtml(r.name)}</div>
+                <div class="loc">${App.escapeHtml(r.location || 'Location not set')}</div>
+              </div>
+              <div class="right">
+                <span class="badge ${st.cls}">${st.label}</span>
+                <span class="qty">${r.qty}</span>
+              </div>
             </div>
-            <div class="right">
-              <span class="badge ${st.cls}">${st.label}</span>
-              <span class="qty">${r.qty}</span>
-            </div>
+            <button type="button" class="request-item-btn" data-name="${App.escapeHtml(r.name)}">&#128221; Request</button>
           </div>
         `;
       }).join('')
     : App.emptyState("&#128230;", "No supplies catalog entries yet.");
+
+  el.querySelectorAll('.request-item-btn').forEach(btn => {
+    btn.addEventListener('click', () => requestSpecificItem(btn.dataset.name));
+  });
+}
+
+// Opens (or keeps open) the Request an Item form with the item name
+// already filled in, so a staff member never has to type or misspell a
+// name that's already sitting right there on the card.
+function requestSpecificItem(name) {
+  const panel = document.getElementById('reqFormPanel');
+  document.getElementById('reqItemName').value = name;
+  panel.style.display = 'block';
+  document.getElementById('reqFormToggle').textContent = 'Cancel';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('reqQty').focus();
 }
 
 let pendingRequests = [];
