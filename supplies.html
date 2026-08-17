@@ -83,6 +83,10 @@
 
       <section id="suppliesSection">
         <h2><span class="icon" style="background:var(--green-bg);">&#128230;</span>Supplies Status</h2>
+        <div class="supply-search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input id="supplySearch" type="text" placeholder="Search a supply or location&hellip;" />
+        </div>
         <button type="button" class="section-toggle-btn" id="addInFormToggle" style="display:none;">+ Add In</button>
         <div class="request-form" id="addInFormPanel" style="display:none;">
           <label for="addInName">Item name</label>
@@ -143,6 +147,8 @@
 <script src="shared.js"></script>
 
 <script>
+let allSupplies = [];
+
 async function loadSuppliesStatus() {
   const [catalog, transactions] = await Promise.all([
     App.supaGet('supplies_data?select=name,location&deleted=eq.false'),
@@ -163,9 +169,20 @@ async function loadSuppliesStatus() {
     stockByName[t.name] = (stockByName[t.name] || 0) + (t.status === 'In' ? Number(t.quantity) : -Number(t.quantity));
   }
 
-  const rows = catalog
+  allSupplies = catalog
     .map(c => ({ name: c.name, location: c.location, qty: stockByName[c.name] || 0 }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  renderSuppliesList();
+}
+
+function renderSuppliesList() {
+  const query = document.getElementById('supplySearch').value.trim().toLowerCase();
+  const rows = query
+    ? allSupplies.filter(r =>
+        (r.name || '').toLowerCase().includes(query) || (r.location || '').toLowerCase().includes(query)
+      )
+    : allSupplies;
 
   const el = document.getElementById('suppliesList');
   el.innerHTML = rows.length
@@ -187,12 +204,13 @@ async function loadSuppliesStatus() {
           </div>
         `;
       }).join('')
-    : App.emptyState("&#128230;", "No supplies catalog entries yet.");
+    : App.emptyState("&#128269;", query ? `No supplies match "${query}".` : "No supplies catalog entries yet.");
 
   el.querySelectorAll('.request-item-btn').forEach(btn => {
     btn.addEventListener('click', () => requestSpecificItem(btn.dataset.name));
   });
 }
+document.getElementById('supplySearch').addEventListener('input', renderSuppliesList);
 
 // Opens (or keeps open) the Request an Item form with the item name
 // already filled in, so a staff member never has to type or misspell a
