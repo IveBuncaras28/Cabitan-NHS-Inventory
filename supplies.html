@@ -83,9 +83,12 @@
 
       <section id="suppliesSection">
         <h2><span class="icon" style="background:var(--green-bg);">&#128230;</span>Supplies Status</h2>
-        <div class="supply-search-wrap">
-          <span class="search-icon">&#128269;</span>
-          <input id="supplySearch" type="text" placeholder="Search a supply or location&hellip;" />
+        <div class="supply-search-wrap" id="supplySearchWrap">
+          <span class="search-icon" id="supplySearchIcon">&#128269;</span>
+          <input id="supplySearch" type="text" placeholder="Search supplies&hellip;" autocomplete="off" />
+          <button type="button" class="search-clear-btn" id="supplySearchClear" aria-label="Clear search" style="display:none;">&#10005;</button>
+          <kbd class="search-kbd" id="supplySearchKbd">/</kbd>
+          <span class="search-count" id="supplySearchCount"></span>
         </div>
         <button type="button" class="section-toggle-btn" id="addInFormToggle" style="display:none;">+ Add In</button>
         <div class="request-form" id="addInFormPanel" style="display:none;">
@@ -174,6 +177,7 @@ async function loadSuppliesStatus() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   renderSuppliesList();
+  startPlaceholderRotation();
 }
 
 function renderSuppliesList() {
@@ -183,6 +187,16 @@ function renderSuppliesList() {
         (r.name || '').toLowerCase().includes(query) || (r.location || '').toLowerCase().includes(query)
       )
     : allSupplies;
+
+  const clearBtn = document.getElementById('supplySearchClear');
+  const countEl = document.getElementById('supplySearchCount');
+  clearBtn.classList.toggle('show', !!query);
+  if (query) {
+    countEl.textContent = `${rows.length} of ${allSupplies.length} match${rows.length === 1 ? '' : 'es'}`;
+    countEl.classList.add('show');
+  } else {
+    countEl.classList.remove('show');
+  }
 
   const el = document.getElementById('suppliesList');
   el.innerHTML = rows.length
@@ -211,6 +225,47 @@ function renderSuppliesList() {
   });
 }
 document.getElementById('supplySearch').addEventListener('input', renderSuppliesList);
+
+document.getElementById('supplySearchClear').addEventListener('click', () => {
+  const input = document.getElementById('supplySearch');
+  input.value = '';
+  input.focus();
+  renderSuppliesList();
+});
+
+// "/" jumps straight into the search box from anywhere on the page,
+// as long as the person isn't already typing somewhere else.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  e.preventDefault();
+  document.getElementById('supplySearch').focus();
+});
+
+// Rotating placeholder cycling through real item names once the catalog
+// has loaded, so the search bar hints at what's actually in stock
+// instead of a generic "search..." prompt.
+let placeholderTimer = null;
+function startPlaceholderRotation() {
+  const input = document.getElementById('supplySearch');
+  if (!allSupplies.length) return;
+  let i = 0;
+  clearInterval(placeholderTimer);
+  const tick = () => {
+    if (document.activeElement === input || input.value) return;
+    input.placeholder = `Search "${allSupplies[i % allSupplies.length].name}"\u2026`;
+    i++;
+  };
+  tick();
+  placeholderTimer = setInterval(tick, 2600);
+}
+document.getElementById('supplySearch').addEventListener('focus', () => {
+  document.getElementById('supplySearchWrap').classList.add('focused');
+});
+document.getElementById('supplySearch').addEventListener('blur', () => {
+  document.getElementById('supplySearchWrap').classList.remove('focused');
+});
 
 // Opens (or keeps open) the Request an Item form with the item name
 // already filled in, so a staff member never has to type or misspell a
