@@ -191,6 +191,39 @@ footer{text-align:center; padding:16px; font-family:'IBM Plex Mono',monospace; f
 .search-wrap input[type="text"]:focus{border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-bg);}
 .detail-context{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate); margin:-6px 0 12px;}
 
+/* ---------- Report builder card (Dashboard > Reports) ---------- */
+.report-card{background:var(--paper-raised); border:1px solid var(--hair); border-radius:16px; padding:22px 24px; box-shadow:var(--shadow-xs); max-width:560px;}
+.report-card-label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--slate); margin-bottom:9px;}
+.segmented{display:inline-flex; background:var(--paper); border:1px solid var(--hair); border-radius:11px; padding:3px; gap:2px;}
+.segmented button{border:none; background:none; padding:8px 18px; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; color:var(--slate); cursor:pointer; transition:background .15s ease, color .15s ease;}
+.segmented button:hover:not(.active){color:var(--ink);}
+.segmented button.active{background:var(--ink); color:var(--paper);}
+.report-period-picker{display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; margin-top:16px;}
+.report-period-picker label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--slate);}
+.report-period-picker input, .report-period-picker select{
+  font-family:'Inter',sans-serif; font-weight:500; font-size:13.5px; padding:9px 12px; border-radius:10px;
+  border:1px solid var(--hair); background:var(--paper); color:var(--ink); outline:none; cursor:pointer;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+.report-period-picker input:focus, .report-period-picker select:focus{border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-bg);}
+.cat-chip-row{display:flex; flex-wrap:wrap; gap:10px;}
+.cat-chip{
+  display:flex; align-items:center; gap:9px; padding:10px 16px 10px 12px; border-radius:12px;
+  border:1.5px solid var(--hair); background:var(--paper); cursor:pointer; user-select:none;
+  font-family:'Inter',sans-serif; font-size:13.5px; font-weight:500; color:var(--slate);
+  transition:border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.cat-chip:hover{border-color:#D8D0BE;}
+.cat-chip.active{border-color:var(--blue); background:var(--blue-bg); color:var(--blue); box-shadow:0 0 0 1px var(--blue);}
+.cat-chip input[type="checkbox"]{width:15px; height:15px; accent-color:var(--blue); cursor:pointer; margin:0;}
+.cat-chip-icon{font-size:14px;}
+.report-summary{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; line-height:1.6; color:var(--slate);
+  background:var(--paper); border:1px dashed var(--hair); border-radius:10px; padding:11px 15px; margin:18px 0 14px;
+}
+.report-summary strong{color:var(--ink); font-weight:700;}
+#reportGenerateBtn{max-width:100%;}
+
 .list{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:8px; align-items:start;}
 .row{
   display:flex; justify-content:space-between; align-items:center; gap:12px;
