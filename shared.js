@@ -61,6 +61,19 @@ const App = (function () {
     showSignIn();
   }
 
+  // Confirms with the user before actually signing them out -- wraps
+  // clearSession() rather than living inside it, since clearSession()
+  // is also called internally (e.g. when a token refresh fails) where
+  // an "are you sure?" prompt would be the wrong UX -- that's a forced
+  // logout, not a user-initiated one.
+  async function confirmSignOut() {
+    const ok = await confirmDialog('Are you sure you want to log out?', {
+      title: 'Log out?', okLabel: 'Log out', danger: true,
+    });
+    if (!ok) return;
+    await clearSession();
+  }
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str ?? '';
@@ -96,25 +109,17 @@ const App = (function () {
         <span class="who-name">Hello, ${escapeHtml(session.name || deriveNameFromEmail(session.email))}</span>
         <span class="who-email">${escapeHtml(session.email)}</span>
         <button id="signOutBtn">Sign out</button>`;
-      $('signOutBtn').addEventListener('click', clearSession);
+      $('signOutBtn').addEventListener('click', confirmSignOut);
     } else {
       el.innerHTML = '';
     }
   }
 
+  // index.html is the only sign-in screen in the system -- every other
+  // page just redirects here instead of showing its own login form, so
+  // there's never more than one place someone can type a password into.
   function showSignIn() {
-    renderSidebarAuth();
-    if ($('signinScreen')) $('signinScreen').style.display = 'flex';
-    if ($('newPasswordScreen')) $('newPasswordScreen').style.display = 'none';
-    if ($('appContent')) $('appContent').style.display = 'none';
-  }
-
-  function showNewPasswordScreen() {
-    $('newPasswordError').style.display = 'none';
-    $('newPassword1').value = ''; $('newPassword2').value = '';
-    $('signinScreen').style.display = 'none';
-    $('newPasswordScreen').style.display = 'flex';
-    $('appContent').style.display = 'none';
+    window.location.href = 'index.html';
   }
 
   async function showApp() {
@@ -131,75 +136,6 @@ const App = (function () {
           $('globalStatus').textContent = `Couldn't load data: ${e.message}.`;
         }
       }
-    }
-  }
-
-  async function doSignIn() {
-    const email = $('signinEmail').value.trim();
-    const password = $('signinPassword').value;
-    $('signinError').style.display = 'none';
-    if (!email || !password) return;
-
-    try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error_description || data.msg || 'Sign in failed');
-
-      session = {
-        access_token: data.access_token, refresh_token: data.refresh_token, email,
-        isAdmin: data.user?.app_metadata?.is_admin === true,
-        name: displayNameFor(data.user, email),
-      };
-      await persistSession();
-      $('signinEmail').value = ''; $('signinPassword').value = '';
-
-      if (data.user?.user_metadata?.must_change_password === true) {
-        showNewPasswordScreen();
-        return;
-      }
-      await showApp();
-    } catch (e) {
-      $('signinError').textContent = e.message;
-      $('signinError').style.display = 'block';
-    }
-  }
-
-  async function doSetNewPassword() {
-    const p1 = $('newPassword1').value;
-    const p2 = $('newPassword2').value;
-    $('newPasswordError').style.display = 'none';
-
-    if (!p1 || p1.length < 8) {
-      $('newPasswordError').textContent = 'Password must be at least 8 characters.';
-      $('newPasswordError').style.display = 'block';
-      return;
-    }
-    if (p1 !== p2) {
-      $('newPasswordError').textContent = 'Passwords do not match.';
-      $('newPasswordError').style.display = 'block';
-      return;
-    }
-
-    try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-        method: 'PUT',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: p1, data: { must_change_password: false } }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || data.error_description || 'Could not set new password');
-      await showApp();
-    } catch (e) {
-      $('newPasswordError').textContent = e.message;
-      $('newPasswordError').style.display = 'block';
     }
   }
 
@@ -458,10 +394,6 @@ const App = (function () {
     ensureToastRoot();
     ensureConfirmRoot();
     wireSidebarToggle();
-    if ($('signinSubmit')) $('signinSubmit').addEventListener('click', doSignIn);
-    if ($('newPasswordSubmit')) $('newPasswordSubmit').addEventListener('click', doSetNewPassword);
-    const pw = $('signinPassword');
-    if (pw) pw.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSignIn(); });
 
     await loadSession();
     if (session && session.access_token) {
