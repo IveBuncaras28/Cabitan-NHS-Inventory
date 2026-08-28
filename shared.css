@@ -124,6 +124,8 @@ footer{text-align:center; padding:16px; font-family:'IBM Plex Mono',monospace; f
 /* ---------- Shared components (tiles, lists, badges) ---------- */
 .tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px;}
 .tile{background:var(--paper-raised); border:1px solid var(--hair); border-radius:14px; padding:15px 17px; animation:rise .3s ease backwards; box-shadow:var(--shadow-xs); transition:box-shadow .18s ease, transform .18s ease, border-color .18s ease;}
+.tile.tile-clickable{cursor:pointer;}
+.tile.tile-clickable.active{border-color:var(--blue); box-shadow:0 0 0 2px var(--blue-bg);}
 .tile:hover{box-shadow:var(--shadow-md); transform:translateY(-2px); border-color:#D8D0BE;}
 .tile-count{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:26px; color:var(--ink);}
 .tile-label{font-size:12px; color:var(--slate); margin-top:2px;}
