@@ -83,16 +83,16 @@
 
       <section id="pifSection">
         <h2><span class="icon" style="background:var(--blue-bg);">&#127970;</span>Asset Classification (PIF Records)</h2>
-        <p class="detail-context">Click a classification to see its individual assets and their condition.</p>
+        <p class="detail-context">Click a classification to see its individual assets.</p>
         <div class="tiles" id="pifTiles"></div>
       </section>
 
       <section id="assetDetailSection">
         <h2><span class="icon" style="background:var(--blue-bg);">&#128203;</span>Asset Details <span id="detailClassLabel" style="font-weight:400; color:var(--slate); font-size:12px;"></span></h2>
         <div class="filter-bar" id="assetDetailFilterBar" style="display:none;">
-          <div class="select-wrap">
-            <label for="assetConditionFilter">Condition</label>
-            <select id="assetConditionFilter"><option value="">All conditions</option></select>
+          <div class="text-wrap">
+            <label for="assetSearchFilter">Search</label>
+            <input id="assetSearchFilter" type="text" placeholder="Item name, reference no., or description&hellip;" />
           </div>
           <button type="button" class="btn-reset" id="clearAssetClassBtn">Clear selection</button>
         </div>
@@ -111,14 +111,8 @@
 <script>
 let allPifRows = []; // classification only, for the tile counts
 let selectedClassification = null;
-let selectedCondition = '';
-
-function conditionClass(cond) {
-  const c = (cond || '').toLowerCase();
-  if (c.includes('poor') || c.includes('unserviceable') || c.includes('damag') || c.includes('condemn')) return 'critical';
-  if (c.includes('fair') || c.includes('worn') || c.includes('repair')) return 'low';
-  return 'ok'; // Good, Serviceable, New, etc.
-}
+let assetDetailRows = []; // full rows for the currently selected classification, cached for search
+let searchQuery = '';
 
 async function loadPifDistribution() {
   allPifRows = await App.supaGet('pif_records?select=classification&deleted=eq.false');
@@ -149,7 +143,8 @@ function renderPifTiles() {
 
 async function selectClassification(classification) {
   selectedClassification = classification;
-  selectedCondition = '';
+  searchQuery = '';
+  document.getElementById('assetSearchFilter').value = '';
   await renderAssetDetail();
   document.getElementById('assetDetailSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -169,6 +164,7 @@ async function renderAssetDetail() {
   }
 
   label.textContent = `\u00b7 ${selectedClassification}`;
+  filterBar.style.display = 'flex';
   listEl.innerHTML = App.emptyState("&#8987;", "Loading assets\u2026");
 
   const rows = await App.supaGet(
@@ -177,51 +173,46 @@ async function renderAssetDetail() {
 
   // Field names are defensive/fallback-chained since PIF records may be
   // entered with slightly different column names depending on how the
-  // record was created (item_name vs description vs article, etc.).
-  const withFields = rows.map(r => ({
-    name: r.item_name || r.description || r.article || r.name || 'Unnamed item',
-    condition: r.condition || r.status || 'Not specified',
-    quantity: r.quantity != null ? r.quantity : null,
-    property_number: r.property_number || r.pif_number || r.tag_number || null,
-    location: r.location || r.custodian || null,
+  // record was created (article vs item_name vs name, etc.).
+  assetDetailRows = rows.map(r => ({
+    itemName: r.article || r.item_name || r.name || 'Unnamed item',
+    referenceNo: r.reference_no || r.property_number || r.pif_number || r.tag_number || null,
+    description: r.description || null,
   }));
 
-  const conditions = [...new Set(withFields.map(r => r.condition))].sort();
-  const condSelect = document.getElementById('assetConditionFilter');
-  const curCond = selectedCondition;
-  condSelect.innerHTML = '<option value="">All conditions</option>' +
-    conditions.map(c => `<option value="${App.escapeHtml(c)}">${App.escapeHtml(c)}</option>`).join('');
-  condSelect.value = curCond;
-  filterBar.style.display = 'flex';
+  renderAssetList();
+}
 
-  const filtered = selectedCondition
-    ? withFields.filter(r => r.condition === selectedCondition)
-    : withFields;
+function renderAssetList() {
+  const listEl = document.getElementById('assetDetailList');
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? assetDetailRows.filter(r =>
+        r.itemName.toLowerCase().includes(q) ||
+        (r.referenceNo || '').toLowerCase().includes(q) ||
+        (r.description || '').toLowerCase().includes(q)
+      )
+    : assetDetailRows;
 
   listEl.innerHTML = filtered.length
     ? filtered.map((r, i) => `
-        <div class="row" style="animation-delay:${i * 25}ms">
-          <div>
-            <div class="n">${App.escapeHtml(r.name)}</div>
-            <div class="loc">${[r.property_number, r.location].filter(Boolean).map(App.escapeHtml).join(' \u00b7 ') || 'No property number/location on file'}</div>
-          </div>
-          <div class="right">
-            <span class="badge ${conditionClass(r.condition)}">${App.escapeHtml(r.condition)}</span>
-            ${r.quantity != null ? `<span class="qty">${r.quantity}</span>` : ''}
-          </div>
+        <div class="asset-detail-row" style="animation-delay:${i * 25}ms">
+          <div class="n">${App.escapeHtml(r.itemName)}</div>
+          <div class="field"><strong>Reference No.:</strong> ${r.referenceNo ? App.escapeHtml(r.referenceNo) : 'Not on file'}</div>
+          <div class="field"><strong>Description:</strong> ${r.description ? App.escapeHtml(r.description) : 'Not on file'}</div>
         </div>
       `).join('')
-    : App.emptyState("&#127970;", "No assets match this filter.");
+    : App.emptyState("&#127970;", q ? "No assets match this search." : "No assets found for this classification.");
 }
 
-document.getElementById('assetConditionFilter').addEventListener('change', (e) => {
-  selectedCondition = e.target.value;
-  renderAssetDetail();
+document.getElementById('assetSearchFilter').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  renderAssetList();
 });
 
 document.getElementById('clearAssetClassBtn').addEventListener('click', () => {
   selectedClassification = null;
-  selectedCondition = '';
+  searchQuery = '';
   renderAssetDetail();
 });
 
