@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Peace &amp; Order — Cabitan NHS</title>
+<link rel="icon" type="image/png" href="school-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body data-page="peace-order">
+<div class="shell">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="brand-row">
+        <img class="brand-logo" src="data:image/png;base64,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" alt="Cabitan National High School logo" />
+        <div>
+          <div class="brand-name">SIMPLUS-CABITAN NHS</div>
+          <p class="eyebrow">Inventory, Personnel Locator &amp; Utility System</p>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-link" data-nav="dashboard"><span class="nav-icon" style="background:var(--blue-bg);">&#128202;</span>Dashboard</a>
+      <p class="nav-group">School Inventory</p>
+      <a href="supplies.html" class="nav-link" data-nav="supplies"><span class="nav-icon" style="background:var(--green-bg);">&#128230;</span>Consumable Supplies</a>
+      <a href="assets.html" class="nav-link" data-nav="assets"><span class="nav-icon" style="background:var(--blue-bg);">&#127970;</span>Fixed Assets</a>
+      <a href="books.html" class="nav-link" data-nav="books"><span class="nav-icon" style="background:var(--amber-bg);">&#128218;</span>Books</a>
+      <p class="nav-group">Student Records</p>
+      <a href="students.html" class="nav-link" data-nav="students"><span class="nav-icon" style="background:var(--rust-bg);">&#127891;</span>Student Profiles</a>
+      <p class="nav-group">Personnel Services</p>
+      <a href="teacher-locator.html" class="nav-link" data-nav="teacher-locator"><span class="nav-icon" style="background:var(--teal-bg);">&#128205;</span>Teacher Locator</a>
+      <a href="service-credit.html" class="nav-link" data-nav="service-credit"><span class="nav-icon" style="background:var(--teal-bg);">&#128197;</span>Service Credit Monitor</a>
+      <a href="downloads.html" class="nav-link" data-nav="downloads"><span class="nav-icon" style="background:var(--teal-bg);">&#128229;</span>Downloads</a>
+      <p class="nav-group">Peace &amp; Order</p>
+      <a href="peace-order.html" class="nav-link" data-nav="peace-order"><span class="nav-icon" style="background:var(--violet-bg);">&#128330;</span>Incident Reports</a>
+      <p class="nav-more">More categories will show up here as they're added.</p>
+    </nav>
+    <div class="sidebar-foot" id="sidebarAuth"></div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+        <div>
+          <h1>Peace &amp; Order</h1>
+          <p class="sub">Cabitan NHS &middot; Incident Reports &amp; Case Management</p>
+        </div>
+      </div>
+      <span id="lastUpdated">Loading&hellip;</span>
+    </header>
+
+    <div id="signinScreen">
+      <div class="auth-card">
+        <h2>Staff Sign In</h2>
+        <p class="sub">Sign in with your school staff account to continue.</p>
+        <label for="signinEmail">Email</label>
+        <input id="signinEmail" type="email" autocomplete="username" />
+        <label for="signinPassword">Password</label>
+        <input id="signinPassword" type="password" autocomplete="current-password" />
+        <p class="request-error" id="signinError"></p>
+        <button id="signinSubmit">Sign In</button>
+      </div>
+    </div>
+
+    <div id="newPasswordScreen" style="display:none;">
+      <div class="auth-card">
+        <h2>Set a New Password</h2>
+        <p class="sub">You're signing in with a temporary password. Choose a new one to continue.</p>
+        <label for="newPassword1">New Password</label>
+        <input id="newPassword1" type="password" autocomplete="new-password" placeholder="At least 8 characters" />
+        <label for="newPassword2">Confirm New Password</label>
+        <input id="newPassword2" type="password" autocomplete="new-password" />
+        <p class="request-error" id="newPasswordError"></p>
+        <button id="newPasswordSubmit">Set Password &amp; Continue</button>
+      </div>
+    </div>
+
+    <main id="appContent">
+      <div class="container">
+        <div id="globalStatus" style="display:none;"></div>
+
+      <section id="statsSection" style="display:none;">
+        <h2><span class="icon" style="background:var(--violet-bg);">&#128202;</span>Case Overview</h2>
+        <div class="stat-cards" id="statCards"></div>
+      </section>
+
+      <section id="reportFormSection">
+        <h2><span class="icon" style="background:var(--rust-bg);">&#9888;</span>Report an Incident</h2>
+        <p class="detail-context">Submit a report for any bullying, dispute, or misconduct incident. Guidance/admin staff will follow up.</p>
+        <button type="button" class="section-toggle-btn" id="reportFormToggle">+ Report an Incident</button>
+        <div class="request-form" id="reportFormPanel" style="display:none;">
+          <label for="incDate">Date of Incident</label>
+          <input id="incDate" type="date" />
+          <label for="incType">Type</label>
+          <select id="incType">
+            <option value="Bullying">Bullying</option>
+            <option value="Verbal Dispute">Verbal Dispute / Altercation</option>
+            <option value="Physical Altercation">Physical Altercation</option>
+            <option value="Cyberbullying">Cyberbullying</option>
+            <option value="Property Damage">Property Damage / Vandalism</option>
+            <option value="Other">Other</option>
+          </select>
+          <label for="incSeverity">Severity</label>
+          <select id="incSeverity">
+            <option value="Low">Low</option>
+            <option value="Moderate">Moderate</option>
+            <option value="High">High</option>
+          </select>
+          <label for="incLocation">Location</label>
+          <input id="incLocation" type="text" placeholder="e.g. Grade 9 hallway, Canteen" />
+          <label for="incGrade">Grade Level (optional)</label>
+          <select id="incGrade">
+            <option value="">&mdash;</option>
+            <option>Grade 7</option><option>Grade 8</option><option>Grade 9</option><option>Grade 10</option>
+            <option>Grade 11</option><option>Grade 12</option>
+          </select>
+          <label for="incSection">Section (optional)</label>
+          <input id="incSection" type="text" placeholder="e.g. Sampaguita" />
+          <label for="incPersons">Persons Involved</label>
+          <input id="incPersons" type="text" placeholder="Names / roles (student, teacher, etc.)" />
+          <label for="incDesc">Description</label>
+          <textarea id="incDesc" rows="4" style="width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:10px 12px; border-radius:9px; border:1px solid var(--hair); background:var(--paper); color:var(--ink); outline:none; box-sizing:border-box; resize:vertical;" placeholder="What happened, when noticed, any immediate action taken..."></textarea>
+          <p class="request-error" id="reportFormError"></p>
+          <p class="request-success" id="reportFormSuccess"></p>
+          <button type="button" class="primary-btn" id="reportFormSubmit">Submit Report</button>
+        </div>
+      </section>
+
+      <section id="myReportsSection">
+        <h2><span class="icon" style="background:var(--blue-bg);">&#128203;</span>My Submitted Reports</h2>
+        <div class="list" id="myReportsList"></div>
+      </section>
+
+      <section id="caseManagementSection" style="display:none;">
+        <h2><span class="icon" style="background:var(--violet-bg);">&#128193;</span>Case Management</h2>
+        <div class="ticker-wrap" style="margin-bottom:18px;">
+          <div class="ticker-track" id="cmTickerTrack"></div>
+        </div>
+        <div class="toolbar-row">
+          <div class="filter-bar" style="margin-bottom:0;">
+            <div class="select-wrap">
+              <label for="cmFilterStatus">Status</label>
+              <select id="cmFilterStatus">
+                <option value="">All</option>
+                <option value="Open">Open</option>
+                <option value="In Mediation">In Mediation</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+            <div class="select-wrap">
+              <label for="cmFilterSeverity">Severity</label>
+              <select id="cmFilterSeverity">
+                <option value="">All</option>
+                <option value="Low">Low</option>
+                <option value="Moderate">Moderate</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+            <div class="select-wrap">
+              <label for="cmFilterGrade">Grade</label>
+              <select id="cmFilterGrade">
+                <option value="">All</option>
+                <option>Grade 7</option><option>Grade 8</option><option>Grade 9</option><option>Grade 10</option>
+                <option>Grade 11</option><option>Grade 12</option>
+              </select>
+            </div>
+            <button type="button" class="clear-btn" id="cmResetBtn">&#8635; Reset</button>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" class="btn-export" id="cmExportBtn">&#8681; Export CSV</button>
+          </div>
+        </div>
+
+        <div class="dt-toolbar">
+          <div class="entries-select">
+            Show
+            <select id="cmPageSize">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+            </select>
+            entries
+          </div>
+          <div class="supply-search-wrap" style="max-width:340px; margin-bottom:0;">
+            <span class="search-icon">&#128269;</span>
+            <input type="text" id="cmSearch" placeholder="Search cases..." autocomplete="off" />
+            <button type="button" class="search-clear-btn" id="cmSearchClear">&#10005;</button>
+            <span class="search-kbd">/</span>
+            <span class="search-count" id="cmSearchCount"></span>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="dt-table" id="cmTable" style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="incident_date">Date<span class="sort-arrows">&#9650;&#9660;</span></th>
+                <th class="sortable" data-sort="incident_type">Type<span class="sort-arrows">&#9650;&#9660;</span></th>
+                <th class="sortable" data-sort="severity">Severity<span class="sort-arrows">&#9650;&#9660;</span></th>
+                <th>Location / Grade</th>
+                <th>Reported By</th>
+                <th class="sortable" data-sort="status">Status<span class="sort-arrows">&#9650;&#9660;</span></th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="cmTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="dt-footer">
+          <span id="cmCount" class="dt-count-pill"></span>
+          <div class="dt-pagination" id="cmPagination"></div>
+        </div>
+      </section>
+
+      <section id="analyticsSection" style="display:none;">
+        <h2><span class="icon" style="background:var(--green-bg);">&#128200;</span>Analytics &amp; Trends</h2>
+        <p class="detail-context">Patterns across all logged incidents &mdash; use these to spot recurring hotspots early.</p>
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <h3>By Type</h3>
+            <div class="bar-list" id="anaByType"></div>
+          </div>
+          <div class="analytics-card">
+            <h3>By Grade Level</h3>
+            <div class="bar-list" id="anaByGrade"></div>
+          </div>
+          <div class="analytics-card">
+            <h3>By Month (last 6 months)</h3>
+            <div class="bar-list" id="anaByMonth"></div>
+          </div>
+          <div class="analytics-card">
+            <h3>Top Locations</h3>
+            <div class="bar-list" id="anaByLocation"></div>
+          </div>
+        </div>
+      </section>
+
+      </div>
+    </main>
+
+    <footer>Developer: Ivy B. Buncaras &middot; The site refreshes every 30 seconds</footer>
+  </div>
+</div>
+
+<div id="caseModalRoot">
+  <div class="case-modal">
+    <div class="case-modal-head">
+      <h3 id="cmModalTitle">Case Detail</h3>
+      <button type="button" class="case-modal-close" id="cmModalClose">&#10005;</button>
+    </div>
+    <p class="case-meta" id="cmModalMeta"></p>
+    <div class="case-desc" id="cmModalDesc"></div>
+
+    <p class="case-field-label">Status</p>
+    <div class="segmented" id="cmStatusSegmented">
+      <button type="button" data-status="Open">Open</button>
+      <button type="button" data-status="In Mediation">In Mediation</button>
+      <button type="button" data-status="Resolved">Resolved</button>
+    </div>
+
+    <p class="case-field-label">Assigned To</p>
+    <input type="text" id="cmAssignedTo" placeholder="Guidance counselor / discipline officer name" />
+
+    <p class="case-field-label">Case Notes &amp; Follow-ups</p>
+    <div class="case-notes-list" id="cmNotesList"></div>
+    <textarea id="cmNewNote" rows="2" placeholder="Add a note (mediation update, follow-up, resolution summary)..."></textarea>
+
+    <p class="request-error" id="cmModalError"></p>
+    <div class="case-modal-actions">
+      <button type="button" class="secondary-btn" id="cmModalPrint" style="border:1px solid var(--hair); background:none; color:var(--slate); border-radius:9px; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; padding:10px 16px;">&#128424; Print</button>
+      <button type="button" class="secondary-btn" id="cmModalCancel">Close</button>
+      <button type="button" class="primary-btn" id="cmModalSave">Save Case</button>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+
+<script>
+// ================= Peace & Order module =================
+const INC_TABLE = 'incident_reports';
+const NOTES_TABLE = 'incident_case_notes';
+
+let allCases = [];       // admin: every case (for Case Management + Analytics)
+let filteredCases = [];  // admin: after filter/search/sort
+let cmPage = 1;
+let cmSort = { key: 'incident_date', dir: 'desc' };
+let activeCaseId = null;
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function statusBadgeClass(status) {
+  if (status === 'Open') return 'badge open';
+  if (status === 'In Mediation') return 'badge mediation';
+  return 'badge resolved';
+}
+function severityBadgeClass(sev) {
+  if (sev === 'High') return 'badge sev-high';
+  if (sev === 'Moderate') return 'badge sev-moderate';
+  return 'badge sev-low';
+}
+
+// ---------- Report form ----------
+function toggleReportForm(forceOpen) {
+  const panel = App.$('reportFormPanel');
+  const isHidden = panel.style.display === 'none';
+  const open = forceOpen != null ? forceOpen : isHidden;
+  panel.style.display = open ? 'block' : 'none';
+  App.$('reportFormToggle').textContent = open ? 'Cancel' : '+ Report an Incident';
+  if (open) {
+    App.$('incDate').value = todayStr();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+App.$('reportFormToggle').addEventListener('click', () => toggleReportForm());
+
+async function submitIncidentReport() {
+  const errEl = App.$('reportFormError');
+  const okEl = App.$('reportFormSuccess');
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+
+  const payload = {
+    incident_date: App.$('incDate').value || todayStr(),
+    incident_type: App.$('incType').value,
+    severity: App.$('incSeverity').value,
+    location: App.$('incLocation').value.trim(),
+    grade_level: App.$('incGrade').value || null,
+    section: App.$('incSection').value.trim() || null,
+    persons_involved: App.$('incPersons').value.trim() || null,
+    description: App.$('incDesc').value.trim(),
+    status: 'Open',
+    reported_by: App.session?.name || null,
+    reported_by_email: App.session?.email,
+  };
+
+  if (!payload.description) {
+    errEl.textContent = 'Please describe what happened.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = App.$('reportFormSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting\u2026';
+  try {
+    const res = await App.supaFetch(INC_TABLE, { method: 'POST', body: JSON.stringify(payload) });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || body.hint || `Submit failed (${res.status})`);
+    }
+    okEl.textContent = 'Report submitted. Guidance/admin staff will follow up.';
+    okEl.style.display = 'block';
+    App.toast('Incident report submitted.', 'success');
+    ['incLocation','incSection','incPersons','incDesc'].forEach(id => App.$(id).value = '');
+    await loadMyReports();
+    if (App.session?.isAdmin) await loadCaseManagementData();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Report';
+  }
+}
+App.$('reportFormSubmit').addEventListener('click', submitIncidentReport);
+
+// ---------- My Reports ----------
+async function loadMyReports() {
+  const email = App.session?.email;
+  if (!email) return;
+  const rows = await App.supaGet(
+    `${INC_TABLE}?select=*&reported_by_email=eq.${encodeURIComponent(email)}&deleted=eq.false&order=created_at.desc`
+  );
+  const list = App.$('myReportsList');
+  if (!rows.length) {
+    list.innerHTML = App.emptyState('&#128203;', "You haven't submitted any reports yet.");
+    return;
+  }
+  list.innerHTML = rows.map(r => `
+    <div class="row">
+      <div>
+        <div class="n">${App.escapeHtml(r.incident_type)} &mdash; ${App.escapeHtml(r.location || 'No location noted')}</div>
+        <div class="loc">${App.escapeHtml(r.incident_date)}${r.grade_level ? ' &middot; ' + App.escapeHtml(r.grade_level) : ''}${r.section ? ' ' + App.escapeHtml(r.section) : ''}</div>
+      </div>
+      <div class="right">
+        <span class="${severityBadgeClass(r.severity)}">${App.escapeHtml(r.severity)}</span>
+        <span class="${statusBadgeClass(r.status)}">${App.escapeHtml(r.status)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---------- Admin visibility ----------
+function applyAdminVisibility() {
+  const isAdmin = !!App.session?.isAdmin;
+  App.$('statsSection').style.display = isAdmin ? 'block' : 'none';
+  App.$('caseManagementSection').style.display = isAdmin ? 'block' : 'none';
+  App.$('analyticsSection').style.display = isAdmin ? 'block' : 'none';
+}
+
+// ---------- Case Management (admin) ----------
+async function loadCaseManagementData() {
+  allCases = await App.supaGet(`${INC_TABLE}?select=*&deleted=eq.false&order=incident_date.desc`);
+  renderStatCards();
+  renderCaseTicker();
+  applyCmFiltersAndRender();
+  renderAnalytics();
+  setUpSearchPlaceholderRotation();
+}
+
+function renderStatCards() {
+  const total = allCases.length;
+  const open = allCases.filter(c => c.status === 'Open').length;
+  const mediation = allCases.filter(c => c.status === 'In Mediation').length;
+  const resolved = allCases.filter(c => c.status === 'Resolved').length;
+  const cards = [
+    { cls: 'violet', icon: '&#128193;', label: 'TOTAL CASES', value: total, status: '' },
+    { cls: 'rust', icon: '&#9888;', label: 'OPEN', value: open, status: 'Open' },
+    { cls: 'amber', icon: '&#129309;', label: 'IN MEDIATION', value: mediation, status: 'In Mediation' },
+    { cls: 'green', icon: '&#9989;', label: 'RESOLVED', value: resolved, status: 'Resolved' },
+  ];
+  App.$('statCards').innerHTML = cards.map((c, i) => `
+    <div class="stat-card ${c.cls}" data-filter-status="${c.status}" style="animation-delay:${i*40}ms; cursor:pointer;" title="Click to filter cases">
+      <div>
+        <div class="stat-label">${c.label}</div>
+        <div class="stat-value">${c.value}</div>
+      </div>
+      <div class="stat-icon" style="background:var(--${c.cls}-bg); color:var(--${c.cls});">${c.icon}</div>
+    </div>
+  `).join('');
+  App.$('statCards').querySelectorAll('[data-filter-status]').forEach(card => {
+    card.addEventListener('click', () => {
+      App.$('cmFilterStatus').value = card.dataset.filterStatus;
+      applyCmFiltersAndRender();
+      App.$('caseManagementSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
+// ---------- Recent activity ticker ----------
+function renderCaseTicker() {
+  const track = App.$('cmTickerTrack');
+  const recent = [...allCases]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 12);
+  track.innerHTML = recent.length
+    ? recent.map(r => `<span><strong>${App.escapeHtml(r.incident_type)}</strong> at ${App.escapeHtml(r.location || 'unspecified location')} &mdash; ${App.escapeHtml(r.status)}</span>`).join('')
+    : `<span>No incidents logged yet.</span>`;
+}
+
+function applyCmFiltersAndRender() {
+  const status = App.$('cmFilterStatus').value;
+  const severity = App.$('cmFilterSeverity').value;
+  const grade = App.$('cmFilterGrade').value;
+  const search = App.$('cmSearch').value.trim().toLowerCase();
+
+  filteredCases = allCases.filter(c => {
+    if (status && c.status !== status) return false;
+    if (severity && c.severity !== severity) return false;
+    if (grade && c.grade_level !== grade) return false;
+    if (search) {
+      const hay = [c.incident_type, c.location, c.reported_by, c.persons_involved, c.description].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  filteredCases.sort((a, b) => {
+    const { key, dir } = cmSort;
+    let av = a[key] || '', bv = b[key] || '';
+    if (key === 'incident_date') { av = new Date(av); bv = new Date(bv); }
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  cmPage = 1;
+  renderCmTable();
+
+  const countEl = App.$('cmSearchCount');
+  if (search) {
+    countEl.textContent = `${filteredCases.length} of ${allCases.length} matches`;
+    countEl.classList.add('show');
+  } else {
+    countEl.classList.remove('show');
+  }
+}
+
+function renderCmTable() {
+  const pageSize = Number(App.$('cmPageSize').value) || 25;
+  const total = filteredCases.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  cmPage = Math.min(cmPage, totalPages);
+  const start = (cmPage - 1) * pageSize;
+  const pageRows = filteredCases.slice(start, start + pageSize);
+
+  const tbody = App.$('cmTableBody');
+  if (!pageRows.length) {
+    tbody.innerHTML = `<tr><td colspan="7">${App.emptyState('&#128203;', 'No cases match these filters.')}</td></tr>`;
+  } else {
+    tbody.innerHTML = pageRows.map(r => `
+      <tr>
+        <td>${App.escapeHtml(r.incident_date)}</td>
+        <td>${App.escapeHtml(r.incident_type)}</td>
+        <td><span class="${severityBadgeClass(r.severity)}">${App.escapeHtml(r.severity)}</span></td>
+        <td>${App.escapeHtml(r.location || '\u2014')}${r.grade_level ? '<br><span style="color:var(--slate); font-size:11.5px;">' + App.escapeHtml(r.grade_level) + (r.section ? ' ' + App.escapeHtml(r.section) : '') + '</span>' : ''}</td>
+        <td>${App.escapeHtml(r.reported_by || r.reported_by_email || '\u2014')}</td>
+        <td><span class="${statusBadgeClass(r.status)}">${App.escapeHtml(r.status)}</span></td>
+        <td><button type="button" class="action-btn edit" data-case-id="${r.id}">Manage</button></td>
+      </tr>
+    `).join('');
+    tbody.querySelectorAll('[data-case-id]').forEach(btn => {
+      btn.addEventListener('click', () => openCaseModal(Number(btn.dataset.caseId)));
+    });
+  }
+
+  App.$('cmCount').textContent = `${total} case${total === 1 ? '' : 's'}`;
+
+  const pag = App.$('cmPagination');
+  let pagHtml = `<button ${cmPage === 1 ? 'disabled' : ''} data-p="prev">&laquo;</button>`;
+  for (let p = 1; p <= totalPages; p++) {
+    pagHtml += `<button class="${p === cmPage ? 'active' : ''}" data-p="${p}">${p}</button>`;
+  }
+  pagHtml += `<button ${cmPage === totalPages ? 'disabled' : ''} data-p="next">&raquo;</button>`;
+  pag.innerHTML = pagHtml;
+  pag.querySelectorAll('button[data-p]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.dataset.p === 'prev') cmPage = Math.max(1, cmPage - 1);
+      else if (b.dataset.p === 'next') cmPage = Math.min(totalPages, cmPage + 1);
+      else cmPage = Number(b.dataset.p);
+      renderCmTable();
+    });
+  });
+}
+
+document.querySelectorAll('#cmTable th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (cmSort.key === key) cmSort.dir = cmSort.dir === 'asc' ? 'desc' : 'asc';
+    else cmSort = { key, dir: 'asc' };
+    document.querySelectorAll('#cmTable th.sortable').forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+    th.classList.add(cmSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+    applyCmFiltersAndRender();
+  });
+});
+
+['cmFilterStatus', 'cmFilterSeverity', 'cmFilterGrade'].forEach(id => {
+  App.$(id).addEventListener('change', applyCmFiltersAndRender);
+});
+App.$('cmSearch').addEventListener('input', () => {
+  App.$('cmSearchClear').classList.toggle('show', !!App.$('cmSearch').value);
+  applyCmFiltersAndRender();
+});
+App.$('cmSearchClear').addEventListener('click', () => {
+  App.$('cmSearch').value = '';
+  App.$('cmSearchClear').classList.remove('show');
+  applyCmFiltersAndRender();
+  App.$('cmSearch').focus();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA' && App.session?.isAdmin) {
+    e.preventDefault();
+    App.$('cmSearch').focus();
+  }
+});
+
+let placeholderTimer = null;
+function setUpSearchPlaceholderRotation() {
+  const input = App.$('cmSearch');
+  const pool = [...new Set(allCases.flatMap(c => [c.incident_type, c.location]).filter(Boolean))];
+  if (!pool.length) return;
+  let i = 0;
+  if (placeholderTimer) clearInterval(placeholderTimer);
+  const rotate = () => {
+    if (document.activeElement === input || input.value) return;
+    input.placeholder = `Search "${pool[i % pool.length]}"...`;
+    i++;
+  };
+  rotate();
+  placeholderTimer = setInterval(rotate, 2800);
+}
+App.$('cmPageSize').addEventListener('change', () => renderCmTable());
+App.$('cmResetBtn').addEventListener('click', () => {
+  App.$('cmFilterStatus').value = '';
+  App.$('cmFilterSeverity').value = '';
+  App.$('cmFilterGrade').value = '';
+  App.$('cmSearch').value = '';
+  applyCmFiltersAndRender();
+});
+
+App.$('cmExportBtn').addEventListener('click', () => {
+  const headers = ['Date','Type','Severity','Location','Grade','Section','Reported By','Status','Assigned To'];
+  const rows = filteredCases.map(r => [
+    r.incident_date, r.incident_type, r.severity, r.location || '', r.grade_level || '',
+    r.section || '', r.reported_by || r.reported_by_email || '', r.status, r.assigned_to || ''
+  ]);
+  const csv = [headers, ...rows].map(row =>
+    row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `peace-order-cases-${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ---------- Case detail modal ----------
+async function openCaseModal(id) {
+  const c = allCases.find(x => x.id === id);
+  if (!c) return;
+  activeCaseId = id;
+  App.$('cmModalTitle').textContent = `${c.incident_type} \u2014 ${c.incident_date}`;
+  App.$('cmModalMeta').innerHTML =
+    `Reported by ${App.escapeHtml(c.reported_by || c.reported_by_email)} &middot; ` +
+    `${App.escapeHtml(c.location || 'No location noted')}` +
+    (c.grade_level ? ` &middot; ${App.escapeHtml(c.grade_level)}${c.section ? ' ' + App.escapeHtml(c.section) : ''}` : '') +
+    (c.persons_involved ? `<br>Involved: ${App.escapeHtml(c.persons_involved)}` : '');
+  App.$('cmModalDesc').textContent = c.description || '';
+  App.$('cmAssignedTo').value = c.assigned_to || '';
+  App.$('cmNewNote').value = '';
+  App.$('cmModalError').style.display = 'none';
+
+  document.querySelectorAll('#cmStatusSegmented button').forEach(b => {
+    b.classList.toggle('active', b.dataset.status === c.status);
+  });
+
+  await loadCaseNotes(id);
+
+  App.$('caseModalRoot').classList.add('open');
+}
+
+let activeCaseNotes = [];
+
+async function loadCaseNotes(incidentId) {
+  const listEl = App.$('cmNotesList');
+  listEl.innerHTML = '<p style="font-size:12px; color:var(--slate);">Loading notes\u2026</p>';
+  try {
+    const notes = await App.supaGet(`${NOTES_TABLE}?select=*&incident_id=eq.${incidentId}&order=created_at.desc`);
+    activeCaseNotes = notes;
+    listEl.innerHTML = notes.length
+      ? notes.map(n => `
+        <div class="case-note">
+          <div class="cn-meta">${App.escapeHtml(n.created_by || 'Admin')} &middot; ${new Date(n.created_at).toLocaleString()}</div>
+          ${App.escapeHtml(n.note)}
+        </div>`).join('')
+      : '<p style="font-size:12px; color:var(--slate);">No notes yet.</p>';
+  } catch (e) {
+    listEl.innerHTML = `<p style="font-size:12px; color:var(--rust);">Couldn't load notes: ${App.escapeHtml(e.message)}</p>`;
+  }
+}
+
+document.querySelectorAll('#cmStatusSegmented button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#cmStatusSegmented button').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+
+function printCaseReport() {
+  const c = allCases.find(x => x.id === activeCaseId);
+  if (!c) return;
+  const notesHtml = activeCaseNotes.length
+    ? activeCaseNotes.map(n => `<tr><td>${new Date(n.created_at).toLocaleDateString()}</td><td>${App.escapeHtml(n.created_by || 'Admin')}</td><td>${App.escapeHtml(n.note)}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center; color:#888;">No notes recorded.</td></tr>';
+
+  const html = `
+  <html><head><title>Incident Case Report</title>
+  <style>
+    body{font-family:Arial,sans-serif; padding:32px; color:#16233D;}
+    h1{font-size:16px; margin:0 0 2px;}
+    .sub{font-size:11px; color:#555; margin:0 0 18px;}
+    table{width:100%; border-collapse:collapse; margin-bottom:16px;}
+    td, th{border:1px solid #ccc; padding:7px 10px; font-size:12px; text-align:left; vertical-align:top;}
+    th{background:#F0EFEA; width:150px;}
+    .sig-row{display:flex; justify-content:space-between; margin-top:56px;}
+    .sig{width:30%; text-align:center; border-top:1px solid #333; padding-top:6px; font-size:11px;}
+  </style></head><body>
+    <h1>Cabitan National High School &mdash; Incident Case Report</h1>
+    <p class="sub">District: Mandaon North &middot; Printed ${new Date().toLocaleString()}</p>
+    <table>
+      <tr><th>Date of Incident</th><td>${App.escapeHtml(c.incident_date)}</td></tr>
+      <tr><th>Type</th><td>${App.escapeHtml(c.incident_type)}</td></tr>
+      <tr><th>Severity</th><td>${App.escapeHtml(c.severity)}</td></tr>
+      <tr><th>Location</th><td>${App.escapeHtml(c.location || '\u2014')}</td></tr>
+      <tr><th>Grade / Section</th><td>${App.escapeHtml(c.grade_level || '\u2014')} ${App.escapeHtml(c.section || '')}</td></tr>
+      <tr><th>Persons Involved</th><td>${App.escapeHtml(c.persons_involved || '\u2014')}</td></tr>
+      <tr><th>Description</th><td>${App.escapeHtml(c.description || '')}</td></tr>
+      <tr><th>Reported By</th><td>${App.escapeHtml(c.reported_by || c.reported_by_email)}</td></tr>
+      <tr><th>Assigned To</th><td>${App.escapeHtml(c.assigned_to || '\u2014')}</td></tr>
+      <tr><th>Status</th><td>${App.escapeHtml(c.status)}</td></tr>
+    </table>
+    <p style="font-size:12px; font-weight:bold; margin:0 0 6px;">Case Notes / Follow-ups</p>
+    <table>
+      <tr><th style="width:90px;">Date</th><th style="width:130px;">By</th><th>Note</th></tr>
+      ${notesHtml}
+    </table>
+    <div class="sig-row">
+      <div class="sig">${App.escapeHtml(c.reported_by || c.reported_by_email)}<br>Requesting Party</div>
+      <div class="sig">${App.escapeHtml(c.assigned_to || '\u2014')}<br>Guidance / Discipline Officer</div>
+      <div class="sig">LELIS A. BARTOLAY<br>Principal / School Head</div>
+    </div>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { App.toast("Couldn't open the print window \u2014 check your browser's popup blocker.", 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.onload = () => win.print();
+}
+App.$('cmModalPrint').addEventListener('click', printCaseReport);
+
+App.$('cmModalClose').addEventListener('click', () => App.$('caseModalRoot').classList.remove('open'));
+App.$('cmModalCancel').addEventListener('click', () => App.$('caseModalRoot').classList.remove('open'));
+App.$('caseModalRoot').addEventListener('click', (e) => {
+  if (e.target === App.$('caseModalRoot')) App.$('caseModalRoot').classList.remove('open');
+});
+
+App.$('cmModalSave').addEventListener('click', async () => {
+  if (!activeCaseId) return;
+  const errEl = App.$('cmModalError');
+  errEl.style.display = 'none';
+
+  const statusBtn = document.querySelector('#cmStatusSegmented button.active');
+  const newStatus = statusBtn ? statusBtn.dataset.status : 'Open';
+  const assignedTo = App.$('cmAssignedTo').value.trim() || null;
+  const newNote = App.$('cmNewNote').value.trim();
+
+  const btn = App.$('cmModalSave');
+  btn.disabled = true;
+  btn.textContent = 'Saving\u2026';
+  try {
+    const patchBody = {
+      status: newStatus,
+      assigned_to: assignedTo,
+      updated_at: new Date().toISOString(),
+    };
+    if (newStatus === 'Resolved') patchBody.resolved_at = new Date().toISOString();
+    const res = await App.supaFetch(`${INC_TABLE}?id=eq.${activeCaseId}`, {
+      method: 'PATCH', body: JSON.stringify(patchBody),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || body.hint || `Save failed (${res.status})`);
+    }
+
+    if (newNote) {
+      const noteRes = await App.supaFetch(NOTES_TABLE, {
+        method: 'POST',
+        body: JSON.stringify({
+          incident_id: activeCaseId,
+          note: newNote,
+          created_by: App.session?.name || App.session?.email,
+        }),
+      });
+      if (!noteRes.ok) {
+        const body = await noteRes.json().catch(() => ({}));
+        throw new Error(body.message || body.hint || `Note save failed (${noteRes.status})`);
+      }
+    }
+
+    App.toast('Case updated.', 'success');
+    App.$('caseModalRoot').classList.remove('open');
+    await loadCaseManagementData();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Case';
+  }
+});
+
+// ---------- Analytics ----------
+function renderBarList(elId, entries, colorVar) {
+  const el = App.$(elId);
+  if (!entries.length) {
+    el.innerHTML = '<p style="font-size:12px; color:var(--slate);">No data yet.</p>';
+    return;
+  }
+  const max = Math.max(...entries.map(e => e.count), 1);
+  el.innerHTML = entries.map(e => `
+    <div class="bar-row">
+      <span class="bar-name">${App.escapeHtml(e.label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(e.count / max) * 100}%; background:var(${colorVar});"></div></div>
+      <span class="bar-value">${e.count}</span>
+    </div>
+  `).join('');
+}
+
+function topEntries(counts, limit) {
+  return Object.entries(counts)
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit || 999);
+}
+
+function renderAnalytics() {
+  const byType = {}, byGrade = {}, byLocation = {};
+  for (const c of allCases) {
+    byType[c.incident_type] = (byType[c.incident_type] || 0) + 1;
+    const g = c.grade_level || 'Not specified';
+    byGrade[g] = (byGrade[g] || 0) + 1;
+    if (c.location) byLocation[c.location] = (byLocation[c.location] || 0) + 1;
+  }
+
+  const monthCounts = {};
+  const now = new Date();
+  const monthLabels = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    monthLabels.push(key);
+    monthCounts[key] = 0;
+  }
+  for (const c of allCases) {
+    const d = new Date(c.incident_date);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (key in monthCounts) monthCounts[key]++;
+  }
+  const monthNames = monthLabels.map(k => {
+    const [y, m] = k.split('-');
+    return { label: new Date(Number(y), Number(m)-1, 1).toLocaleString('default', { month: 'short', year: '2-digit' }), count: monthCounts[k] };
+  });
+
+  renderBarList('anaByType', topEntries(byType), '--violet');
+  renderBarList('anaByGrade', topEntries(byGrade), '--blue');
+  renderBarList('anaByMonth', monthNames, '--green');
+  renderBarList('anaByLocation', topEntries(byLocation, 6), '--rust');
+}
+
+// ---------- Page load ----------
+async function loadPeaceOrderPage() {
+  applyAdminVisibility();
+  await loadMyReports();
+  if (App.session?.isAdmin) {
+    await loadCaseManagementData();
+  }
+  App.$('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+App.init(loadPeaceOrderPage);
+</script>
+</body>
+</html>
