@@ -106,9 +106,9 @@
           <input id="leaveStart" type="date" />
           <label for="leaveEnd">End date</label>
           <input id="leaveEnd" type="date" />
-          <label for="leaveDays">Total days</label>
-          <input id="leaveDays" type="number" min="0.5" step="0.5" placeholder="Pick a reference number first" readonly />
-          <p style="margin:4px 0 0; font-size:11.5px; color:var(--slate);">Locked to the days granted on the reference number you picked above.</p>
+          <label for="leaveDays">Days to use</label>
+          <input id="leaveDays" type="number" min="0.5" step="0.5" placeholder="Pick a reference number first" />
+          <p style="margin:4px 0 0; font-size:11.5px; color:var(--slate);" id="leaveDaysHint">Up to the days left on the reference number you picked above &mdash; any remainder stays available for a future request.</p>
           <label for="leaveReason">Reason</label>
           <input id="leaveReason" type="text" placeholder="Optional" />
           <p class="request-error" id="leaveError"></p>
@@ -199,7 +199,7 @@ async function loadMyHistory() {
   `).join('') : App.emptyState("&#128203;", "No credit grants on file yet.");
 }
 
-let availableRefs = []; // grants for the current type not already claimed by a Pending/Approved leave
+let availableRefs = []; // grants for the current type that still have days left to give
 
 async function loadAvailableReferences() {
   const email = App.session.email;
@@ -211,52 +211,76 @@ async function loadAvailableReferences() {
 
   const [grants, claimed] = await Promise.all([
     App.supaGet(`service_credit_grants?select=*&employee_email=eq.${encodeURIComponent(email)}&credit_type=eq.${type}&deleted=eq.false&order=date_granted.asc`),
-    App.supaGet(`leave_requests?select=grant_id,reference_no&employee_email=eq.${encodeURIComponent(email)}&status=in.(Pending,Approved)`),
+    App.supaGet(`leave_requests?select=grant_id,reference_no,total_days&employee_email=eq.${encodeURIComponent(email)}&status=in.(Pending,Approved)`),
   ]);
-  // Match by grant_id where present, but also fall back to reference_no —
-  // leave requests created before this picker existed never got a
-  // grant_id, so grant_id alone would let an already-used reference
-  // number be picked again.
-  const claimedIds = new Set(claimed.map(c => c.grant_id).filter(Boolean));
-  const claimedRefs = new Set(claimed.map(c => c.reference_no).filter(Boolean));
 
-  // Two more guards, both defensive: (1) only offer references that
-  // actually have a day left to give — a grant sitting at 0 days
-  // (e.g. a data-entry mistake) shouldn't be pickable even if nothing
-  // formally "claimed" it; (2) if duplicate grant rows ever share a
-  // reference number (see fix_duplicate_grants.sql), collapse them so
-  // the same reference can't appear twice or slip through as available
-  // via its untouched twin when the other twin is the one that's used.
+  // A grant can now be split across more than one leave request, so
+  // "claimed" means "this many days already spoken for", not "used or
+  // not". Sum by reference_no where there is one (so duplicate grant
+  // rows sharing a reference — see fix_duplicate_grants.sql — share the
+  // same running total), falling back to grant_id for legacy rows that
+  // predate the reference-picker feature and never got a reference_no
+  // recorded on the leave request.
+  const usedByRef = new Map();
+  const usedById = new Map();
+  for (const c of claimed) {
+    const days = Number(c.total_days) || 0;
+    if (c.reference_no) usedByRef.set(c.reference_no, (usedByRef.get(c.reference_no) || 0) + days);
+    else if (c.grant_id) usedById.set(c.grant_id, (usedById.get(c.grant_id) || 0) + days);
+  }
+
+  // Collapse duplicate grant rows that share a reference number into one
+  // entry before computing balances, so the same reference's usage isn't
+  // double-counted or offered twice under two different ids.
   const seenRefs = new Set();
-  availableRefs = grants.filter(g => {
-    if (claimedIds.has(g.id) || claimedRefs.has(g.reference_no)) return false;
-    if (Number(g.days_granted) < 1) return false;
+  const deduped = [];
+  for (const g of grants) {
     if (g.reference_no) {
-      if (seenRefs.has(g.reference_no)) return false;
+      if (seenRefs.has(g.reference_no)) continue;
       seenRefs.add(g.reference_no);
     }
-    return true;
-  });
+    deduped.push(g);
+  }
+
+  availableRefs = deduped
+    .map(g => {
+      const used = g.reference_no ? (usedByRef.get(g.reference_no) || 0) : (usedById.get(g.id) || 0);
+      const remaining = Math.round((Number(g.days_granted) - used) * 100) / 100;
+      return { ...g, remaining_days: remaining };
+    })
+    .filter(g => g.remaining_days > 0);
 
   if (!availableRefs.length) {
     refSelect.innerHTML = `<option value="">No available reference numbers</option>`;
     document.getElementById('leaveDays').value = '';
+    document.getElementById('leaveDays').removeAttribute('max');
     emptyMsg.textContent = `No available ${type === 'SO' ? 'Special Order' : 'Local'} credits to use \u2014 ask an admin to log one, or pick the other type.`;
     emptyMsg.style.display = 'block';
     return;
   }
 
   refSelect.innerHTML = availableRefs.map(g =>
-    `<option value="${g.id}">${App.escapeHtml(g.reference_no || 'No reference')} \u2014 ${g.days_granted}d \u00b7 granted ${fmtDate(g.date_granted)}</option>`
+    `<option value="${g.id}">${App.escapeHtml(g.reference_no || 'No reference')} \u2014 ${g.remaining_days}d left of ${g.days_granted}d \u00b7 granted ${fmtDate(g.date_granted)}</option>`
   ).join('');
-  document.getElementById('leaveDays').value = availableRefs[0].days_granted;
+  updateLeaveDaysForSelectedRef();
+}
+
+function updateLeaveDaysForSelectedRef() {
+  const grant = availableRefs.find(g => g.id === document.getElementById('leaveRef').value) || availableRefs[0];
+  const daysInput = document.getElementById('leaveDays');
+  const hint = document.getElementById('leaveDaysHint');
+  if (!grant) {
+    daysInput.value = '';
+    daysInput.removeAttribute('max');
+    return;
+  }
+  daysInput.max = grant.remaining_days;
+  daysInput.value = grant.remaining_days;
+  hint.textContent = `Up to ${grant.remaining_days}d left on this reference number \u2014 any remainder stays available for a future request.`;
 }
 
 document.getElementById('leaveType').addEventListener('change', loadAvailableReferences);
-document.getElementById('leaveRef').addEventListener('change', (e) => {
-  const grant = availableRefs.find(g => g.id === e.target.value);
-  document.getElementById('leaveDays').value = grant ? grant.days_granted : '';
-});
+document.getElementById('leaveRef').addEventListener('change', updateLeaveDaysForSelectedRef);
 
 async function loadMyRequests() {
   const email = App.session.email;
@@ -330,6 +354,7 @@ async function submitLeave() {
   const grant = availableRefs.find(g => g.id === grant_id);
   const start_date = document.getElementById('leaveStart').value;
   const end_date = document.getElementById('leaveEnd').value;
+  const total_days = parseFloat(document.getElementById('leaveDays').value);
   const reason = document.getElementById('leaveReason').value.trim() || null;
   document.getElementById('leaveError').style.display = 'none';
   document.getElementById('leaveSuccess').style.display = 'none';
@@ -344,6 +369,13 @@ async function submitLeave() {
     document.getElementById('leaveError').style.display = 'block';
     return;
   }
+  // A small epsilon guards against float rounding (e.g. 0.1 + 0.2) when
+  // the person applies for exactly the remaining balance.
+  if (!total_days || total_days <= 0 || total_days > grant.remaining_days + 0.0001) {
+    document.getElementById('leaveError').textContent = `Days to use must be between 0.5 and ${grant.remaining_days} (the days left on this reference number).`;
+    document.getElementById('leaveError').style.display = 'block';
+    return;
+  }
 
   try {
     const res = await App.supaFetch('leave_requests', {
@@ -351,7 +383,7 @@ async function submitLeave() {
       body: JSON.stringify({
         employee_email: App.session.email, employee_name: App.session.name,
         credit_type, grant_id, reference_no: grant.reference_no,
-        start_date, end_date, total_days: grant.days_granted, reason, status: 'Pending',
+        start_date, end_date, total_days, reason, status: 'Pending',
       }),
     });
     if (!res.ok) {
